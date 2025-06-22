@@ -105,24 +105,42 @@ pipeColor:
 pipeColorGreen:
     DATA BYTE $42, $42, $42, $42, $42, $42, $42, $42
 
-'CONST CELL_GRID      = 0
-'CONST CELL_BASE      = 1
-'CONST CELL_PIPE_H    = 2
-'CONST CELL_PIPE_V    = 3
-'CONST CELL_PIPE_X    = 4
-'CONST CELL_PIPE_DR   = 5
-'CONST CELL_PIPE_DL   = 6
-'CONST CELL_PIPE_UR   = 7
-'CONST CELL_PIPE_UL   = 8
-'CONST CELL_FILL_H    = 9
-'CONST CELL_FILL_V    = 10
-'CONST CELL_FILL_XH   = 11
-'CONST CELL_FILL_XV   = 12
-'CONST CELL_FILL_XX   = 13
-'CONST CELL_FILL_DR   = 14
-'CONST CELL_FILL_DL   = 15
-'CONST CELL_FILL_UR   = 16
-'CONST CELL_FILL_UL   = 17
+
+selSprites:
+    DATA BYTE $55, $80, $00, $80, $00, $80, $00, $80     
+    DATA BYTE $00, $80, $00, $80, $00, $80, $00, $80     
+    DATA BYTE $55, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $55, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $80, $00, $80, $00, $80, $00, $80     
+    DATA BYTE $00, $80, $00, $80, $00, $80, $00, $80     
+    DATA BYTE $00, $80, $00, $80, $00, $80, $00, $80     
+    DATA BYTE $55, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $55, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $55, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $80, $00, $80, $00, $80, $00, $80     
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+
+    DATA BYTE $AA, $00, $80, $00, $80, $00, $80, $00     
+    DATA BYTE $80, $00, $80, $00, $80, $00, $80, $00     
+    DATA BYTE $AA, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $AA, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $80, $00, $80, $00, $80, $00, $80, $00     
+    DATA BYTE $80, $00, $80, $00, $80, $00, $80, $00     
+    DATA BYTE $80, $00, $80, $00, $80, $00, $80, $00     
+    DATA BYTE $AA, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $AA, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $AA, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $80, $00, $80, $00, $80, $00, $80, $00     
+    DATA BYTE $80, $00, $00, $00, $00, $00, $00, $00     
+
 
 cellNames:
     ' grid
@@ -154,7 +172,7 @@ cellNames:
     DATA BYTE 159, 164, 142
     DATA BYTE 154, 163, 156        
     ' ur \
-    DATA BYTE 137, 162, 150
+    DATA BYTE 147, 162, 150
     DATA BYTE 140, 166, 160
     DATA BYTE 143, 144, 155        
     ' ul /

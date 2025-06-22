@@ -1,37 +1,47 @@
 GOTO main
 
 include "vdp-utils.bas"
+include "input.bas"
 
 #fontTable:
-    DATA $0100, $0900, $1100, $0500, $0D00, $1500
+    DATA $0100, $0900, $1100
 
 CONST PLAYFIELD_X = 5
 CONST PLAYFIELD_Y = 3
 CONST PLAYFIELD_WIDTH = 9
 CONST PLAYFIELD_HEIGHT = 7
 
-CONST CELL_GRID      = 0 * 9
-CONST CELL_BASE      = 1 * 9
-CONST CELL_PIPE_H    = 2 * 9
-CONST CELL_PIPE_V    = 3 * 9
-CONST CELL_PIPE_X    = 4 * 9
-CONST CELL_PIPE_DR   = 5 * 9
-CONST CELL_PIPE_DL   = 6 * 9
-CONST CELL_PIPE_UR   = 7 * 9
-CONST CELL_PIPE_UL   = 8 * 9
-CONST CELL_FILL_H    = 9 * 9
-CONST CELL_FILL_V    = 10 * 9
-CONST CELL_FILL_XH   = 11 * 9
-CONST CELL_FILL_XV   = 12 * 9
-CONST CELL_FILL_XX   = 13 * 9
-CONST CELL_FILL_DR   = 14 * 9
-CONST CELL_FILL_DL   = 15 * 9
-CONST CELL_FILL_UR   = 16 * 9
-CONST CELL_FILL_UL   = 17 * 9
+CONST CHUTE_X = 1
+CONST CHUTE_Y = 3
+CONST CHUTE_SIZE = 6
+
+CONST CELL_GRID      = 0
+CONST CELL_BASE      = 1
+CONST CELL_PIPE_H    = 2
+CONST CELL_PIPE_V    = 3
+CONST CELL_PIPE_X    = 4
+CONST CELL_PIPE_DR   = 5
+CONST CELL_PIPE_DL   = 6
+CONST CELL_PIPE_UR   = 7
+CONST CELL_PIPE_UL   = 8
+CONST CELL_FILL_H    = 9
+CONST CELL_FILL_V    = 10
+CONST CELL_FILL_XH   = 11
+CONST CELL_FILL_XV   = 12
+CONST CELL_FILL_XX   = 13
+CONST CELL_FILL_DR   = 14
+CONST CELL_FILL_DL   = 15
+CONST CELL_FILL_UR   = 16
+CONST CELL_FILL_UL   = 17
+
+DIM chute(6)
+DIM game(PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT)
+DIM #score
 
 main:
     ' what are we working with?
     GOSUB vdpDetect
+	VDP_ENABLE_INT_DISP_OFF
 
 	VDP_REG(50) = $80  ' reset VDP registers to boot values
 	VDP_REG(7) = defaultReg(7)
@@ -43,9 +53,19 @@ main:
 	VDP_REG(5) = defaultReg(5)
 	VDP_REG(6) = defaultReg(6)
 
-	FOR I = 0 TO 5
+	FOR I = 0 TO 2
         DEFINE VRAM PLETTER #fontTable(I), $300, font
     NEXT I
+
+	FOR I = 0 TO FRAME
+		chute(0) = RANDOM(I)
+	NEXT I
+	
+	VDP_DISABLE_INT
+
+	FOR I = 0 TO CHUTE_SIZE - 1
+		chute(I) = RANDOM(7) + 2
+	NEXT I
 
     DEFINE CHAR 0, 24, logo
 
@@ -67,53 +87,118 @@ main:
 	DEFINE VRAM NAME_TAB_XY(0, 0), 12, logoNamesTop
 	DEFINE VRAM NAME_TAB_XY(0, 1), 12, logoNamesBottom
 
-	PRINT AT XY(20,1), "SCORE: 00000"
+	DEFINE SPRITE 0, 8, selSprites
 
-	g_type = CELL_GRID
+	cursorX = 4
+	cursorY = 3
+	#score = 0
+
+	PRINT AT XY(20,0), "LEVEL: 1"
+	PRINT AT XY(20,1), "SCORE: ", <5>#score
+
+
+	GOSUB renderChute	
+
+	FOR I = 0 TO PLAYFIELD_HEIGHT * PLAYFIELD_WIDTH - 1
+		game(I) = 0
+	NEXT I
+
 	FOR g_cell = 0 TO PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT - 1
-		GOSUB renderCell
+		g_type = game(I)
+		GOSUB renderGameCell
 	NEXT g_cell
-
-	g_type = CELL_PIPE_H
-	FOR g_cell = 11 TO 14
-		GOSUB renderCell
-	NEXT g_cell
-	g_cell = 5
-	GOSUB renderCell
-	
-	g_type = CELL_FILL_V
-	FOR g_cell = 22 TO 42 STEP 9
-		GOSUB renderCell
-	NEXT g_cell
-
-	g_type = CELL_FILL_XV
-	g_cell = 13
-	GOSUB renderCell
-
-	g_type = CELL_FILL_DR
-	g_cell = 4
-	GOSUB renderCell
-	g_type = CELL_PIPE_DL
-	g_cell = 6
-	GOSUB renderCell
-
-	g_type = CELL_PIPE_UL
-	g_cell = 15
-	GOSUB renderCell
 
 	VDP_ENABLE_INT
+
+	WHILE 1
+		GOSUB updateNavInput
+
+		IF NAV(NAV_RIGHT) AND cursorX < (PLAYFIELD_WIDTH - 1) THEN
+			cursorX = cursorX + 1
+		ELSEIF NAV(NAV_LEFT) AND cursorX > 0 THEN
+			cursorX = cursorX - 1
+		ELSEIF NAV(NAV_DOWN) AND cursorY < (PLAYFIELD_HEIGHT - 1) THEN
+			cursorY = cursorY + 1
+		ELSEIF NAV(NAV_UP) AND cursorY > 0 THEN
+			cursorY = cursorY - 1
+		ELSEIF NAV(NAV_OK) THEN
+			WAIT
+			IF game(currentIndex) > 0 THEN
+				#score = #score - 50
+			ELSE
+				#score = #score + 100
+			END IF
+			if #score > 65485 then #score = 0
+
+			game(currentIndex) = chute(5)
+			g_cell = currentIndex
+			g_type = game(currentIndex)
+			GOSUB renderGameCell
+			FOR I = 5 TO 1 STEP -1
+				chute(I) = chute(I-1)
+			NEXT I
+			chute(0) = RANDOM(7) + 2
+			GOSUB renderChute
+			PRINT AT XY(20,1), "SCORE: ", <5>#score
+		END IF
+
+		GOSUB setCursor
+		GOSUB delay
+	WEND
 	
 end:
 	GOTO end
 
-renderCell: PROCEDURE
+renderChute: PROCEDURE
+	FOR I = 0 TO CHUTE_SIZE - 1
+		g_cell = I
+		g_type = chute(I)
+		GOSUB renderChuteCell
+	NEXT I
+	END
+	
+
+renderGameCell: PROCEDURE
 	nameX = PLAYFIELD_X + (g_cell % PLAYFIELD_WIDTH) * 3
 	nameY = PLAYFIELD_Y + (g_cell / PLAYFIELD_WIDTH) * 3
 
-	DEFINE VRAM NAME_TAB_XY(nameX, nameY), 3, VARPTR cellNames(g_type)
-	DEFINE VRAM NAME_TAB_XY(nameX, nameY + 1), 3, VARPTR cellNames(g_type + 3)
-	DEFINE VRAM NAME_TAB_XY(nameX, nameY + 2), 3, VARPTR cellNames(g_type + 6)
+	GOSUB renderCell
 	END	
+
+
+renderChuteCell: PROCEDURE
+	nameX = CHUTE_X
+	nameY = CHUTE_Y + g_cell * 3
+
+	GOSUB renderCell
+	END
+
+setCursor: PROCEDURE
+	spriteX = PLAYFIELD_X * 8 + (cursorX * 24) - 1
+	spriteY = PLAYFIELD_Y * 8 + (cursorY * 24) - 2
+	
+	currentIndex = cursorY * PLAYFIELD_WIDTH + cursorX
+	color = 8
+
+	IF game(currentIndex) = 0 THEN color = 2
+
+	spriteOff = (FRAME AND 8) * 2
+
+	SPRITE 0, spriteY, spriteX, spriteOff, color
+	SPRITE 1, spriteY + 16, spriteX, spriteOff + 8, color
+	SPRITE 2, spriteY, spriteX + 16, spriteOff + 4, color
+	SPRITE 3, spriteY + 16, spriteX + 16, spriteOff + 12, color
+
+	END
+
+renderCell: PROCEDURE
+	index = g_type * 9
+
+	DEFINE VRAM NAME_TAB_XY(nameX, nameY), 3, VARPTR cellNames(index)
+	DEFINE VRAM NAME_TAB_XY(nameX, nameY + 1), 3, VARPTR cellNames(index + 3)
+	DEFINE VRAM NAME_TAB_XY(nameX, nameY + 2), 3, VARPTR cellNames(index + 6)
+	END
+
 
 include "font.bas"
 include "patterns.bas"

@@ -40,7 +40,7 @@
 ;: warn-symbols = off
 
 ; use original (possibly incorrectly ported) random
-OLD_RND equ 0
+OLD_RND equ 1
 
 ; We have to use our own workspace, not GPLWS, because the interrupt routine makes it unsafe to
 ; use r11, which we kind of need! So that eats 32 bytes of RAM but means most of the register
