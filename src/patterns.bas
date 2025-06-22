@@ -1,4 +1,4 @@
-grid:   ' empty grid
+grid:   ' empty grid (128)
     DATA BYTE $ff, $80, $80, $80, $80, $80, $80, $80
     DATA BYTE $ff, $00, $00, $00, $00, $00, $00, $00
     DATA BYTE $fe, $01, $01, $01, $01, $01, $01, $01
@@ -9,7 +9,7 @@ grid:   ' empty grid
     DATA BYTE $00, $00, $00, $00, $00, $00, $00, $ff
     DATA BYTE $01, $01, $01, $01, $01, $01, $01, $ff    
 
-base: ' filled base
+base: ' filled base (137)
     DATA BYTE $49, $92, $24, $49, $92, $24, $49, $92
     DATA BYTE $24, $49, $92, $24, $49, $92, $24, $49
     DATA BYTE $93, $25, $49, $93, $25, $49, $93, $25
@@ -20,36 +20,36 @@ base: ' filled base
     DATA BYTE $49, $92, $24, $49, $92, $24, $49, $FF
     DATA BYTE $25, $49, $93, $25, $49, $93, $25, $FE
 
-    ' corners when pipes around   
+    ' corners when pipes around (146)
 baseCornersTL:
     DATA BYTE $49, $92, $24, $49, $92, $24, $49, $F2     ' H
     DATA BYTE $49, $93, $25, $49, $92, $24, $49, $92     ' V
     DATA BYTE $49, $93, $25, $49, $92, $24, $49, $F2     ' X
-baseCornersTR:
+baseCornersTR:  ' (149)
     DATA BYTE $93, $25, $49, $93, $25, $49, $93, $27     ' H
     DATA BYTE $93, $A5, $C9, $93, $25, $49, $93, $25     ' V
     DATA BYTE $93, $A5, $C9, $93, $25, $49, $93, $27     ' X
-baseCornersBL:
+baseCornersBL:  ' (152)
     DATA BYTE $F2, $24, $49, $92, $24, $49, $92, $FF     ' H
     DATA BYTE $92, $24, $49, $92, $24, $49, $93, $FF     ' V
     DATA BYTE $F2, $24, $49, $92, $24, $49, $93, $FF     ' X
-baseCornersBR:
+baseCornersBR:  ' (155)
     DATA BYTE $27, $49, $93, $25, $49, $93, $25, $FE     ' H
     DATA BYTE $25, $49, $93, $25, $49, $93, $A5, $FE     ' V
     DATA BYTE $27, $49, $93, $25, $49, $93, $A5, $FE     ' X
 
-pipes:
+pipes:  ' empty (158) and filled (168)
     DATA BYTE $FF, $00, $00, $00, $00, $00, $00, $FF    ' H
     DATA BYTE $3F, $00, $00, $00, $00, $00, $00, $3F    ' L
     DATA BYTE $FC, $00, $00, $00, $00, $00, $00, $FC    ' R
     DATA BYTE $81, $81, $81, $81, $81, $81, $81, $81    ' V
     DATA BYTE $00, $00, $81, $81, $81, $81, $81, $81    ' T
     DATA BYTE $81, $81, $81, $81, $81, $81, $00, $00    ' B
-    
-    DATA BYTE $FE, $07, $03, $01, $01, $01, $01, $01    ' BL
-    DATA BYTE $7F, $E0, $C0, $80, $80, $80, $80, $80    ' BR
-    DATA BYTE $80, $80, $80, $80, $80, $C0, $E0, $7F    ' TR
-    DATA BYTE $01, $01, $01, $01, $01, $03, $07, $FE    ' TL
+    ' corners (164) and filled (174)
+    DATA BYTE $FF, $07, $03, $01, $01, $01, $01, $01    ' DL
+    DATA BYTE $FF, $E0, $C0, $80, $80, $80, $80, $80    ' DR
+    DATA BYTE $80, $80, $80, $80, $80, $C0, $E0, $FF    ' UR
+    DATA BYTE $01, $01, $01, $01, $01, $03, $07, $FF    ' UL
 
 logo:
     DATA BYTE $0F, $3F, $7F, $7F, $F8, $F0, $F1, $F3     
@@ -105,12 +105,95 @@ pipeColor:
 pipeColorGreen:
     DATA BYTE $42, $42, $42, $42, $42, $42, $42, $42
 
-gridNames:
+'CONST CELL_GRID      = 0
+'CONST CELL_BASE      = 1
+'CONST CELL_PIPE_H    = 2
+'CONST CELL_PIPE_V    = 3
+'CONST CELL_PIPE_X    = 4
+'CONST CELL_PIPE_DR   = 5
+'CONST CELL_PIPE_DL   = 6
+'CONST CELL_PIPE_UR   = 7
+'CONST CELL_PIPE_UL   = 8
+'CONST CELL_FILL_H    = 9
+'CONST CELL_FILL_V    = 10
+'CONST CELL_FILL_XH   = 11
+'CONST CELL_FILL_XV   = 12
+'CONST CELL_FILL_XX   = 13
+'CONST CELL_FILL_DR   = 14
+'CONST CELL_FILL_DL   = 15
+'CONST CELL_FILL_UR   = 16
+'CONST CELL_FILL_UL   = 17
+
+cellNames:
+    ' grid
     DATA BYTE 128, 129, 130
     DATA BYTE 131, 132, 133
     DATA BYTE 134, 135, 136    
-
-cellNames:
+    ' base
     DATA BYTE 137, 138, 139
     DATA BYTE 140, 141, 142
     DATA BYTE 143, 144, 145        
+    ' h -
+    DATA BYTE 146, 138, 149
+    DATA BYTE 159, 158, 160
+    DATA BYTE 152, 144, 155            
+    ' v |
+    DATA BYTE 147, 162, 150
+    DATA BYTE 140, 161, 142
+    DATA BYTE 153, 163, 156        
+    ' x +
+    DATA BYTE 148, 162, 150
+    DATA BYTE 159, 161, 160
+    DATA BYTE 154, 163, 157        
+    ' dr /
+    DATA BYTE 137, 138, 149
+    DATA BYTE 140, 165, 160
+    DATA BYTE 153, 163, 157       
+    ' dl \
+    DATA BYTE 146, 138, 139
+    DATA BYTE 159, 164, 142
+    DATA BYTE 154, 163, 156        
+    ' ur \
+    DATA BYTE 137, 162, 150
+    DATA BYTE 140, 166, 160
+    DATA BYTE 143, 144, 155        
+    ' ul /
+    DATA BYTE 148, 162, 139
+    DATA BYTE 159, 167, 142
+    DATA BYTE 152, 144, 145        
+    ' filled h -
+    DATA BYTE 146, 138, 149
+    DATA BYTE 169, 168, 170
+    DATA BYTE 152, 144, 155            
+    ' filled v |
+    DATA BYTE 147, 172, 150
+    DATA BYTE 140, 171, 142
+    DATA BYTE 153, 173, 156        
+    ' filled xh +- 
+    DATA BYTE 148, 162, 150
+    DATA BYTE 169, 161, 170
+    DATA BYTE 154, 163, 157        
+    ' filled xv +|
+    DATA BYTE 148, 172, 150
+    DATA BYTE 159, 171, 160
+    DATA BYTE 154, 173, 157        
+    ' filled xx ++
+    DATA BYTE 148, 172, 150
+    DATA BYTE 169, 171, 170
+    DATA BYTE 154, 173, 157        
+    ' filled dr /
+    DATA BYTE 137, 138, 149
+    DATA BYTE 140, 175, 170
+    DATA BYTE 153, 173, 157       
+    ' filled dl \
+    DATA BYTE 146, 138, 139
+    DATA BYTE 169, 174, 142
+    DATA BYTE 154, 173, 156        
+    ' filled ur \
+    DATA BYTE 137, 172, 150
+    DATA BYTE 140, 176, 170
+    DATA BYTE 143, 144, 155        
+    ' filled ul /
+    DATA BYTE 148, 172, 139
+    DATA BYTE 169, 177, 142
+    DATA BYTE 152, 144, 145      
