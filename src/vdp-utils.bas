@@ -87,4 +87,4 @@ vdpGpuDetect:
     DATA BYTE $03, $40    ' IDLE    
 
 defaultReg: ' default VDP register values
-    DATA BYTE $02, $82, $06, $FF, $03, $36, $07, $00
+    DATA BYTE $02, $82, $06, $FF, $03, $36, $07, $f4
