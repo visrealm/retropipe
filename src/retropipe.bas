@@ -216,22 +216,17 @@ main:
 	gameState = 1
 	VDP_ENABLE_INT
 
-	ON FRAME GOSUB gameLoop
-
 	WHILE 1
 		WAIT
+		GOSUB updateNavInput
+		IF g_nav > 0 AND delayFrames > 0 THEN
+			delayFrames = delayFrames - 1
+		ELSE
+			GOSUB uiTick
+		END IF
 	WEND
 
-gameLoop: PROCEDURE
-	IF gameState = 0 THEN RETURN
-
-	GOSUB updateNavInput
-
-	IF g_nav > 0 AND delayFrames > 0 THEN
-		delayFrames = delayFrames - 1
-		RETURN
-	END IF
-
+uiTick: PROCEDURE
 	VDP_DISABLE_INT
 
 	delayFrames = 8
