@@ -37,6 +37,7 @@ CONST CELL_FILL_UL   = 17
 DIM chute(6)
 DIM game(PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT)
 DIM #score
+DIM chuteOffset
 
 main:
     ' what are we working with?
@@ -109,8 +110,7 @@ main:
 	PRINT AT XY(20,0), "LEVEL: 1"
 	PRINT AT XY(20,1), "SCORE: ", <5>#score
 
-
-	GOSUB renderChute	
+	chuteOffset = 20
 
 	FOR I = 0 TO PLAYFIELD_HEIGHT * PLAYFIELD_WIDTH - 1
 		game(I) = 0
@@ -151,8 +151,16 @@ main:
 				chute(I) = chute(I-1)
 			NEXT I
 			chute(0) = RANDOM(7) + 2
-			GOSUB renderChute
+			g_cell = CHUTE_SIZE - 1
+			g_type = 1
+			GOSUB renderChuteCell 
+			chuteOffset = 4
 			PRINT AT XY(20,1), "SCORE: ", <5>#score
+		END IF
+
+		IF chuteOffset > 0 THEN
+			chuteOffset = chuteOffset - 1
+			GOSUB renderChute
 		END IF
 
 		GOSUB setCursor
@@ -181,7 +189,7 @@ renderGameCell: PROCEDURE
 
 renderChuteCell: PROCEDURE
 	nameX = CHUTE_X
-	nameY = CHUTE_Y + g_cell * 3
+	nameY = (CHUTE_Y + (g_cell * 3)) - chuteOffset
 
 	GOSUB renderCell
 	END
@@ -207,9 +215,11 @@ setCursor: PROCEDURE
 renderCell: PROCEDURE
 	index = g_type * 9
 
-	DEFINE VRAM NAME_TAB_XY(nameX, nameY), 3, VARPTR cellNames(index)
-	DEFINE VRAM NAME_TAB_XY(nameX, nameY + 1), 3, VARPTR cellNames(index + 3)
-	DEFINE VRAM NAME_TAB_XY(nameX, nameY + 2), 3, VARPTR cellNames(index + 6)
+	IF nameY > 23 THEN RETURN
+
+	IF nameY >= PLAYFIELD_Y THEN DEFINE VRAM NAME_TAB_XY(nameX, nameY), 3, VARPTR cellNames(index)
+	IF nameY + 1 >= PLAYFIELD_Y THEN DEFINE VRAM NAME_TAB_XY(nameX, nameY + 1), 3, VARPTR cellNames(index + 3)
+	IF nameY + 2 >= PLAYFIELD_Y THEN DEFINE VRAM NAME_TAB_XY(nameX, nameY + 2), 3, VARPTR cellNames(index + 6)
 	END
 
 
