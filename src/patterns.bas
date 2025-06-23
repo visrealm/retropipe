@@ -196,7 +196,13 @@ cellNames:
     ' ul /
     DATA BYTE 148, 162, 139
     DATA BYTE 159, 167, 142
-    DATA BYTE 152, 144, 145        
+    DATA BYTE 152, 144, 145
+
+    ' start (left)
+    DATA BYTE 146, 138, 149
+    DATA BYTE 159, 158, "S"
+    DATA BYTE 152, 144, 155            
+
     ' filled h -
     DATA BYTE 146, 138, 149
     DATA BYTE 169, 168, 170
