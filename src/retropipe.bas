@@ -13,7 +13,7 @@ CONST PLAYFIELD_HEIGHT = 7
 
 CONST CHUTE_X = 1
 CONST CHUTE_Y = 3
-CONST CHUTE_SIZE = 6
+CONST CHUTE_SIZE = 5
 
 CONST CELL_GRID      = 0
 CONST CELL_BASE      = 1
@@ -77,6 +77,8 @@ main:
     DEFINE CHAR 158, 10, pipes	' empty pipes
     DEFINE CHAR 168, 10, pipes	' full pipes
 
+    DEFINE CHAR 178, 7, borders
+
 	FOR I = 158 TO 167
 	    DEFINE COLOR I, 1, pipeColor
 	NEXT I
@@ -86,6 +88,17 @@ main:
 
 	DEFINE VRAM NAME_TAB_XY(0, 0), 12, logoNamesTop
 	DEFINE VRAM NAME_TAB_XY(0, 1), 12, logoNamesBottom
+
+	FOR I = 0 TO 31
+		PUT_XY(I, 2), 184
+	NEXT I
+	FOR I = PLAYFIELD_Y TO PLAYFIELD_Y + CHUTE_SIZE * 3 - 1
+		DEFINE VRAM NAME_TAB_XY(0, I), 5, chuteNames
+	NEXT I
+	DEFINE VRAM NAME_TAB_XY(0, PLAYFIELD_Y + CHUTE_SIZE * 3), 5, chuteBottomNames
+	FOR I = PLAYFIELD_Y + CHUTE_SIZE * 3 + 1 TO 23
+		PUT_XY(4, I), 183
+	NEXT I
 
 	DEFINE SPRITE 0, 8, selSprites
 
@@ -130,11 +143,11 @@ main:
 			END IF
 			if #score > 65485 then #score = 0
 
-			game(currentIndex) = chute(5)
+			game(currentIndex) = chute(CHUTE_SIZE - 1)
 			g_cell = currentIndex
 			g_type = game(currentIndex)
 			GOSUB renderGameCell
-			FOR I = 5 TO 1 STEP -1
+			FOR I = CHUTE_SIZE - 1 TO 1 STEP - 1
 				chute(I) = chute(I-1)
 			NEXT I
 			chute(0) = RANDOM(7) + 2
