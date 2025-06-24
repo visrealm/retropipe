@@ -108,6 +108,8 @@ DIM currentIndex
 DIM currentAnim     
 DIM currentAnimStep	' 0 to 23
 
+DIM flowAnimBuffer(8)
+
 sin:
 	DATA BYTE 1,1,2,3,4,5,6,6,7,7,6,6,5,4,3,2,1,1,2,3,4,5,6,6,7,7,6,6,5,4,3,2
 
@@ -139,6 +141,7 @@ main:
 	FOR I = 0 TO CHUTE_SIZE - 1
 		chute(I) = RANDOM(7) + 2
 	NEXT I
+
 
     DEFINE CHAR 0, 24, logo
 	GOSUB updateLogo
@@ -199,6 +202,12 @@ main:
 		GOSUB renderGameCell
 	NEXT g_cell
 
+	FOR I = 0 TO 7
+		flowAnimBuffer(I) = (flowAnimBuffer(I) * 2) OR 1
+	NEXT I
+	DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
+
+
 	gameState = GAME_STATE_BUILDING
 
 	VDP_ENABLE_INT
@@ -207,13 +216,16 @@ main:
 		WAIT
 		IF gameState = GAME_STATE_FLOWING THEN
 			GOSUB flowTick
-		ELSEIF FRAME > 600 AND FRAME < 605 THEN
+		ELSEIF FRAME > 120 AND FRAME < 125 THEN
 			gameState = GAME_STATE_FLOWING
 		END IF
 
 		GOSUB uiTick
 		GOSUB updateLogo
 	WEND
+
+
+
 
 updateLogo: PROCEDURE
 	CONST LOGO_FRAME_DELAY = 4
@@ -280,9 +292,21 @@ flowTick: PROCEDURE
 		currentAnim = anims(tileId * 4 + (currentAnim AND 3))
 	END IF
 
-
 	IF (FRAME AND 7) = 7 THEN
 		currentAnimStep = currentAnimStep + 1
+
+		animSprX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
+		animSprY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
+
+		animSprX = (animSprX + (currentSubTile AND 3)) * 8
+		animSprY = (animSprY + (currentSubTile / 32)) * 8
+
+		FOR I = 0 TO 7
+			flowAnimBuffer(I) = (flowAnimBuffer(I) * 2) OR 1
+		NEXT I
+		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
+
+		SPRITE 4, animSprY - 1, animSprX, 32, $c
 
 		IF animSubStep = 7 AND skipAnim = 0 THEN
 			nameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
@@ -292,9 +316,16 @@ flowTick: PROCEDURE
 
 			c = VPEEK(#addr)
 			VPOKE #addr, c + 10
-		END IF
 
+			FOR I = 0 TO 7
+				flowAnimBuffer(I) = 0
+			NEXT I
+			DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
+
+			SPRITE 4, animSprY - 1, animSprX, 32, 0
+		END IF
 	END IF
+
 	VDP_ENABLE_INT
 	END
 
@@ -304,6 +335,7 @@ uiTick: PROCEDURE
 
 	IF g_nav > 0 AND delayFrames > 0 THEN
 		delayFrames = delayFrames - 1
+		r = RANDOM(255)
 		RETURN
 	END IF
 
@@ -342,12 +374,12 @@ uiTick: PROCEDURE
 			GOSUB renderChuteCell 
 			chuteOffset = 4
 			GOSUB updateScore
-			r = RANDOM(0)
+			r = RANDOM(255)
 		END IF
 	ELSE
 		delayFrames = 0
 		FOR I = 0 TO cursorY
-			r = RANDOM(0)
+			r = RANDOM(255)
 		NEXT I
 	END IF
 
