@@ -239,3 +239,7 @@ cellNames:
     DATA BYTE 148, 172, 139
     DATA BYTE 169, 177, 142
     DATA BYTE 152, 144, 145      
+    ' clear
+    DATA BYTE 32, 32, 32
+    DATA BYTE 32, 32, 32
+    DATA BYTE 32, 32, 32    
