@@ -63,6 +63,7 @@ CONST ANIM_FLOW_LEFT_DOWN  = (FLOW_LEFT * 16) OR FLOW_DOWN
 CONST ANIM_FLOW_UP_LEFT    = (FLOW_UP * 16) OR FLOW_LEFT
 CONST ANIM_FLOW_UP_RIGHT   = (FLOW_UP * 16) OR FLOW_RIGHT
 CONST ANIM_FLOW_INVALID    = $ff
+CONST ANIM_FLOW_SKIP       = $80
 
 CONST SUBTILE_TL = 0
 CONST SUBTILE_TC = 1
@@ -84,7 +85,7 @@ anims:
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
 	DATA BYTE ANIM_FLOW_RIGHT,      ANIM_FLOW_INVALID,    ANIM_FLOW_LEFT,      ANIM_FLOW_INVALID
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_DOWN,       ANIM_FLOW_INVALID,   ANIM_FLOW_UP
-	DATA BYTE ANIM_FLOW_RIGHT,      ANIM_FLOW_DOWN,       ANIM_FLOW_LEFT,      ANIM_FLOW_UP
+	DATA BYTE ANIM_FLOW_RIGHT OR ANIM_FLOW_SKIP,      ANIM_FLOW_DOWN,       ANIM_FLOW_LEFT OR ANIM_FLOW_SKIP,      ANIM_FLOW_UP
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_LEFT_DOWN, ANIM_FLOW_UP_RIGHT
 	DATA BYTE ANIM_FLOW_RIGHT_DOWN, ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_UP_LEFT
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_DOWN_RIGHT, ANIM_FLOW_LEFT_UP,   ANIM_FLOW_INVALID
@@ -248,7 +249,7 @@ main:
 		WAIT
 		IF gameState = GAME_STATE_FLOWING THEN
 			GOSUB flowTick
-		ELSEIF FRAME > 120 THEN
+		ELSEIF FRAME > 120 AND FRAME < 140 THEN
 			gameState = GAME_STATE_FLOWING
 		END IF
 
@@ -261,8 +262,9 @@ flowTick: PROCEDURE
 	animTile = currentAnimStep / 8
 	animSubStep = currentAnimStep AND $07
 	currentSubTile = 0
+	skipAnim = 0
 	IF animTile = 0 THEN
-		SELECT CASE (currentAnim / 16) AND 3
+		SELECT CASE (currentAnim / 16) AND 7
 			CASE FLOW_RIGHT
 				currentSubTile = SUBTILE_ML
 			CASE FLOW_DOWN
@@ -271,9 +273,12 @@ flowTick: PROCEDURE
 				currentSubTile = SUBTILE_MR
 			CASE FLOW_UP
 				currentSubTile = SUBTILE_BC
+			CASE ELSE
+				gameState = GAME_STATE_ENDED
 		END SELECT
 	ELSEIF animTile = 1 THEN
 		currentSubTile = SUBTILE_MC
+		IF currentAnim AND $80 THEN skipAnim = 1
 	ELSEIF animTile = 2 THEN
 		SELECT CASE currentAnim AND 3
 			CASE FLOW_RIGHT
@@ -298,7 +303,12 @@ flowTick: PROCEDURE
 		END SELECT
 		currentAnimStep = 0
 		tileId = game(currentIndex)
-		IF tileId < 2 THEN gameState = GAME_STATE_ENDED
+		IF tileId < 2 THEN
+			gameState = GAME_STATE_ENDED
+		ELSE
+			#score = #score + 100
+			GOSUB updateScore
+		END IF
 		currentAnim = anims(game(currentIndex) * 4 + (currentAnim AND 3))
 	END IF
 
@@ -306,7 +316,7 @@ flowTick: PROCEDURE
 	IF (FRAME AND 7) = 7 THEN
 		currentAnimStep = currentAnimStep + 1
 
-		IF animSubStep = 7 THEN
+		IF animSubStep = 7 AND skipAnim = 0 THEN
 			nameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
 			nameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
 
@@ -360,7 +370,7 @@ uiTick: PROCEDURE
 		g_type = CELL_CLEAR
 		GOSUB renderChuteCell 
 		chuteOffset = 4
-		PRINT AT XY(27,1), <5>#score
+		GOSUB updateScore
 	ELSE
 		delayFrames = 0
 	END IF
@@ -373,6 +383,10 @@ uiTick: PROCEDURE
 	GOSUB setCursor
 
 	VDP_ENABLE_INT
+	END
+
+updateScore: PROCEDURE
+	PRINT AT XY(27,1), <5>#score
 	END
 
 
