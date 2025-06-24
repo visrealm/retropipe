@@ -109,6 +109,7 @@ DIM currentAnim
 DIM currentAnimStep	' 0 to 23
 
 DIM flowAnimBuffer(8)
+DIM flowAnimBuffer2(8)
 
 sin:
 	DATA BYTE 1,1,2,3,4,5,6,6,7,7,6,6,5,4,3,2,1,1,2,3,4,5,6,6,7,7,6,6,5,4,3,2
@@ -235,14 +236,17 @@ updateLogo: PROCEDURE
 	NEXT I
 	END
 
+DIM currentFlowDir
+
 flowTick: PROCEDURE
 	VDP_DISABLE_INT
 
 	animTile = currentAnimStep / 8
 	animSubStep = currentAnimStep AND $07
 	currentSubTile = 0
-	skipAnim = 0
+	skipAnim = 0	
 	IF animTile = 0 THEN
+		currentFlowDir = (currentAnim / 16) AND 7
 		SELECT CASE (currentAnim / 16) AND 7
 			CASE FLOW_RIGHT
 				currentSubTile = SUBTILE_ML
@@ -259,7 +263,8 @@ flowTick: PROCEDURE
 		currentSubTile = SUBTILE_MC
 		IF currentAnim AND $80 THEN skipAnim = 1
 	ELSEIF animTile = 2 THEN
-		SELECT CASE currentAnim AND 3
+		currentFlowDir = currentAnim AND 3
+		SELECT CASE currentFlowDir
 			CASE FLOW_RIGHT
 				currentSubTile = SUBTILE_MR
 			CASE FLOW_DOWN
@@ -270,7 +275,7 @@ flowTick: PROCEDURE
 				currentSubTile = SUBTILE_TC
 		END SELECT
 	ELSE
-		SELECT CASE currentAnim AND 3
+		SELECT CASE currentFlowDir
 			CASE FLOW_RIGHT
 				currentIndex = currentIndex + 1
 			CASE FLOW_DOWN
@@ -300,13 +305,30 @@ flowTick: PROCEDURE
 
 		animSprX = (animSprX + (currentSubTile AND 3)) * 8
 		animSprY = (animSprY + (currentSubTile / 32)) * 8
+		
+		SELECT CASE currentFlowDir
+			CASE FLOW_LEFT
+				FOR I = 0 TO 7
+					flowAnimBuffer(I) = ((flowAnimBuffer(I) * 2) OR $01)
+					flowAnimBuffer2(I) = flowAnimBuffer(I) AND NOT pipes(I)
+				NEXT I
+			CASE FLOW_RIGHT
+				FOR I = 0 TO 7
+					flowAnimBuffer(I) = ((flowAnimBuffer(I) / 2) OR $80)
+					flowAnimBuffer2(I) = flowAnimBuffer(I) AND NOT pipes(I)
+				NEXT I
+			CASE FLOW_UP
+				'FOR I = 0 TO 7
+					flowAnimBuffer(7 - animSubStep) = $ff
+					flowAnimBuffer2(7 - animSubStep) = flowAnimBuffer(7 - animSubStep) AND NOT pipes(I)
+				'NEXT I
+			CASE FLOW_DOWN
+					flowAnimBuffer(animSubStep) = $ff
+					flowAnimBuffer2(animSubStep) = flowAnimBuffer(animSubStep) AND NOT pipes(I)
+		END SELECT
+		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer2(0)
 
-		FOR I = 0 TO 7
-			flowAnimBuffer(I) = (flowAnimBuffer(I) * 2) OR 1
-		NEXT I
-		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
-
-		SPRITE 4, animSprY - 1, animSprX, 32, $c
+		SPRITE 4, animSprY - 1, animSprX, 32, $2
 
 		IF animSubStep = 7 AND skipAnim = 0 THEN
 			nameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
@@ -319,6 +341,7 @@ flowTick: PROCEDURE
 
 			FOR I = 0 TO 7
 				flowAnimBuffer(I) = 0
+				flowAnimBuffer2(I) = 0
 			NEXT I
 			DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
 
