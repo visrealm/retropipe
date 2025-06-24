@@ -182,7 +182,7 @@ cellNames:
     DATA BYTE 140, 161, 142
     DATA BYTE 153, 163, 156        
     ' x +
-    DATA BYTE 148, 162, 150
+    DATA BYTE 148, 162, 151
     DATA BYTE 159, 161, 160
     DATA BYTE 154, 163, 157        
     ' dr /
@@ -194,11 +194,11 @@ cellNames:
     DATA BYTE 159, 164, 142
     DATA BYTE 154, 163, 156        
     ' ur \
-    DATA BYTE 147, 162, 150
+    DATA BYTE 147, 162, 151
     DATA BYTE 140, 166, 160
     DATA BYTE 143, 144, 155        
     ' ul /
-    DATA BYTE 148, 162, 139
+    DATA BYTE 148, 162, 150
     DATA BYTE 159, 167, 142
     DATA BYTE 152, 144, 145
 

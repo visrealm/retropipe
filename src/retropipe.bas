@@ -104,12 +104,15 @@ DIM gameState
 
 DIM cursorIndex
 
+DIM currentFlowDir
 DIM currentIndex
 DIM currentAnim     
 DIM currentAnimStep	' 0 to 23
+DIM #currentIndexAddr
+DIM currentIndexPattId
 
+DIM flowAnimTemp
 DIM flowAnimBuffer(8)
-DIM flowAnimBuffer2(8)
 
 sin:
 	DATA BYTE 1,1,2,3,4,5,6,6,7,7,6,6,5,4,3,2,1,1,2,3,4,5,6,6,7,7,6,6,5,4,3,2
@@ -196,6 +199,7 @@ main:
 	currentIndex = 32
 	currentAnim = ANIM_FLOW_LEFT
 	currentAnimStep = 8
+	currentFlowDir = FLOW_LEFT
 	game(currentIndex) = CELL_PIPE_ST OR CELL_LOCKED_FLAG
 
 	FOR g_cell = 0 TO PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT - 1
@@ -203,8 +207,9 @@ main:
 		GOSUB renderGameCell
 	NEXT g_cell
 
+	flowAnimTemp = 0
 	FOR I = 0 TO 7
-		flowAnimBuffer(I) = (flowAnimBuffer(I) * 2) OR 1
+		flowAnimBuffer(I) = 0
 	NEXT I
 	DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
 
@@ -236,7 +241,6 @@ updateLogo: PROCEDURE
 	NEXT I
 	END
 
-DIM currentFlowDir
 
 flowTick: PROCEDURE
 	VDP_DISABLE_INT
@@ -259,6 +263,7 @@ flowTick: PROCEDURE
 			CASE ELSE
 				gameState = GAME_STATE_FAILED
 		END SELECT
+
 	ELSEIF animTile = 1 THEN
 		currentSubTile = SUBTILE_MC
 		IF currentAnim AND $80 THEN skipAnim = 1
@@ -285,6 +290,7 @@ flowTick: PROCEDURE
 			CASE FLOW_UP
 				currentIndex = currentIndex - PLAYFIELD_WIDTH
 		END SELECT
+	
 		currentAnimStep = 0
 		tileId = game(currentIndex) AND CELL_TILE_MASK
 		IF tileId < 2 THEN
@@ -298,6 +304,12 @@ flowTick: PROCEDURE
 	END IF
 
 	IF (FRAME AND 7) = 7 THEN
+		nameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
+		nameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
+
+		#currentIndexAddr = #VDP_NAME_TAB + XY(nameX, nameY) + currentSubTile
+		currentIndexPattId = (VPEEK(#currentIndexAddr) - 158) * 8
+
 		currentAnimStep = currentAnimStep + 1
 
 		animSprX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
@@ -308,40 +320,36 @@ flowTick: PROCEDURE
 		
 		SELECT CASE currentFlowDir
 			CASE FLOW_LEFT
+				flowAnimTemp = (flowAnimTemp * 2) OR $01
 				FOR I = 0 TO 7
-					flowAnimBuffer(I) = ((flowAnimBuffer(I) * 2) OR $01)
-					flowAnimBuffer2(I) = flowAnimBuffer(I) AND NOT pipes(I)
+					flowAnimBuffer(I) = flowAnimTemp AND NOT pipes(currentIndexPattId + I)
 				NEXT I
 			CASE FLOW_RIGHT
+				flowAnimTemp = (flowAnimTemp / 2) OR $80
 				FOR I = 0 TO 7
-					flowAnimBuffer(I) = ((flowAnimBuffer(I) / 2) OR $80)
-					flowAnimBuffer2(I) = flowAnimBuffer(I) AND NOT pipes(I)
+					flowAnimBuffer(I) = flowAnimTemp AND NOT pipes(currentIndexPattId + I)
 				NEXT I
 			CASE FLOW_UP
-				'FOR I = 0 TO 7
-					flowAnimBuffer(7 - animSubStep) = $ff
-					flowAnimBuffer2(7 - animSubStep) = flowAnimBuffer(7 - animSubStep) AND NOT pipes(I)
-				'NEXT I
+					flowAnimBuffer(7 - animSubStep) = NOT pipes(currentIndexPattId + 7 - animSubStep)
 			CASE FLOW_DOWN
-					flowAnimBuffer(animSubStep) = $ff
-					flowAnimBuffer2(animSubStep) = flowAnimBuffer(animSubStep) AND NOT pipes(I)
+					flowAnimBuffer(animSubStep) = NOT pipes(currentIndexPattId + animSubStep)
 		END SELECT
-		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer2(0)
+		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
 
 		SPRITE 4, animSprY - 1, animSprX, 32, $2
 
 		IF animSubStep = 7 AND skipAnim = 0 THEN
-			nameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
-			nameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
+			'nameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
+			'nameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
 
-			#addr = #VDP_NAME_TAB + XY(nameX, nameY) + currentSubTile
+			'#addr = #VDP_NAME_TAB + XY(nameX, nameY) + currentSubTile
 
-			c = VPEEK(#addr)
-			VPOKE #addr, c + 10
+			c = VPEEK(#currentIndexAddr)
+			VPOKE #currentIndexAddr, c + 10
 
+			flowAnimTemp = 0
 			FOR I = 0 TO 7
 				flowAnimBuffer(I) = 0
-				flowAnimBuffer2(I) = 0
 			NEXT I
 			DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
 
