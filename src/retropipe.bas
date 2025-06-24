@@ -36,6 +36,9 @@ CONST CELL_PIPE_ST   = 9
 'CONST CELL_FILL_UL   = 18
 CONST CELL_CLEAR     = 19
 
+CONST CELL_LOCKED_FLAG = $80
+CONST CELL_TILE_MASK   = $0f
+
 ' tile definition
 ' appearance
 ' paths
@@ -79,6 +82,7 @@ CONST ANIM_STEPS = 8 * 3
 
 CONST GAME_STATE_BUILDING = 0
 CONST GAME_STATE_FLOWING  = 1
+CONST GAME_STATE_FAILED   = 2
 
 anims:
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
@@ -90,56 +94,6 @@ anims:
 	DATA BYTE ANIM_FLOW_RIGHT_DOWN, ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_UP_LEFT
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_DOWN_RIGHT, ANIM_FLOW_LEFT_UP,   ANIM_FLOW_INVALID
 	DATA BYTE ANIM_FLOW_RIGHT_UP,   ANIM_FLOW_DOWN_LEFT,  ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
-
-tileHorz:
-	DATA BYTE CELL_PIPE_H
-	DATA BYTE FLOW_LEFT OR FLOW_RIGHT	' entry
-	DATA BYTE ANIM_FLOW_RIGHT
-	DATA BYTE ANIM_FLOW_INVALID
-	DATA BYTE ANIM_FLOW_LEFT
-	DATA BYTE ANIM_FLOW_INVALID
-
-tileVert:
-	DATA BYTE CELL_PIPE_V
-	DATA BYTE FLOW_UP OR FLOW_DOWN
-	DATA BYTE ANIM_FLOW_INVALID
-	DATA BYTE ANIM_FLOW_DOWN
-	DATA BYTE ANIM_FLOW_INVALID
-	DATA BYTE ANIM_FLOW_UP
-
-tileCross:
-	DATA BYTE CELL_PIPE_X
-	DATA BYTE FLOW_LEFT OR FLOW_RIGHT OR FLOW_UP OR FLOW_DOWN
-	DATA BYTE ANIM_FLOW_NONE	' no centre animation for horizontals
-	DATA BYTE ANIM_FLOW_DOWN
-	DATA BYTE ANIM_FLOW_NONE    ' no centre animation for horizontals
-	DATA BYTE ANIM_FLOW_UP
-
-tileDR:
-	DATA BYTE CELL_PIPE_DR
-	DATA BYTE FLOW_LEFT OR FLOW_UP
-	DATA BYTE ANIM_FLOW_INVALID
-	DATA BYTE ANIM_FLOW_INVALID
-	DATA BYTE ANIM_FLOW_LEFT_DOWN
-	DATA BYTE ANIM_FLOW_UP_RIGHT
-
-
-' cell-id
-' inlets	1 << PILE_LEFT | 1 << PIPE_RIGHT
-' paths - 4 entries for each path
-' 
-' 0: centre tile anim
-' 1: $ff	<-- lose
-' 2: centre tile anim
-' 3: centre tile anim
-
-' game state
-' cursorIndex into game()
-' currentSubTile 
-' currentAnim
-' animIncrement - increments every X frames
-' animIndex = animIncrement AND 0x07
-'
 
 DIM chute(6)
 DIM game(PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT)
@@ -234,10 +188,10 @@ main:
 	currentIndex = 32
 	currentAnim = ANIM_FLOW_LEFT
 	currentAnimStep = 8
-	game(currentIndex) = CELL_PIPE_ST
+	game(currentIndex) = CELL_PIPE_ST OR CELL_LOCKED_FLAG
 
 	FOR g_cell = 0 TO PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT - 1
-		g_type = game(g_cell)
+		g_type = game(g_cell) AND CELL_TILE_MASK
 		GOSUB renderGameCell
 	NEXT g_cell
 
@@ -274,7 +228,7 @@ flowTick: PROCEDURE
 			CASE FLOW_UP
 				currentSubTile = SUBTILE_BC
 			CASE ELSE
-				gameState = GAME_STATE_ENDED
+				gameState = GAME_STATE_FAILED
 		END SELECT
 	ELSEIF animTile = 1 THEN
 		currentSubTile = SUBTILE_MC
@@ -302,18 +256,19 @@ flowTick: PROCEDURE
 				currentIndex = currentIndex - PLAYFIELD_WIDTH
 		END SELECT
 		currentAnimStep = 0
-		tileId = game(currentIndex)
+		tileId = game(currentIndex) AND CELL_TILE_MASK
 		IF tileId < 2 THEN
-			gameState = GAME_STATE_ENDED
+			gameState = GAME_STATE_FAILED
 		ELSE
+			game(currentIndex) = tileId OR CELL_LOCKED_FLAG
 			#score = #score + 100
 			GOSUB updateScore
 		END IF
-		currentAnim = anims(game(currentIndex) * 4 + (currentAnim AND 3))
+		currentAnim = anims(tileId * 4 + (currentAnim AND 3))
 	END IF
 
 
-	IF (FRAME AND 7) = 7 THEN
+	IF (FRAME AND 3) = 3 THEN
 		currentAnimStep = currentAnimStep + 1
 
 		IF animSubStep = 7 AND skipAnim = 0 THEN
@@ -351,26 +306,30 @@ uiTick: PROCEDURE
 	ELSEIF NAV(NAV_UP) AND cursorY > 0 THEN
 		cursorY = cursorY - 1
 	ELSEIF NAV(NAV_OK) THEN
-		IF game(cursorIndex) > 0 THEN
-			#score = #score - 50
-		ELSE
-			#score = #score + 100
-		END IF
-		if #score > 65485 then #score = 0
+		tileId = game(cursorIndex)
+		IF (tileId AND CELL_LOCKED_FLAG) = 0 THEN
+			tileId = tileId AND CELL_TILE_MASK
+			IF tileId > 0 THEN
+				#score = #score - 50
+			ELSE
+				#score = #score + 100
+			END IF
+			if #score > 65485 then #score = 0
 
-		game(cursorIndex) = chute(CHUTE_SIZE - 1)
-		g_cell = cursorIndex
-		g_type = game(cursorIndex)
-		GOSUB renderGameCell
-		FOR I = CHUTE_SIZE - 1 TO 1 STEP - 1
-			chute(I) = chute(I-1)
-		NEXT I
-		chute(0) = RANDOM(7) + 2
-		g_cell = CHUTE_SIZE - 1
-		g_type = CELL_CLEAR
-		GOSUB renderChuteCell 
-		chuteOffset = 4
-		GOSUB updateScore
+			g_type = chute(CHUTE_SIZE - 1)
+			g_cell = cursorIndex
+			game(cursorIndex) = g_type
+			GOSUB renderGameCell
+			FOR I = CHUTE_SIZE - 1 TO 1 STEP - 1
+				chute(I) = chute(I - 1)
+			NEXT I
+			chute(0) = RANDOM(7) + 2
+			g_cell = CHUTE_SIZE - 1
+			g_type = CELL_CLEAR
+			GOSUB renderChuteCell 
+			chuteOffset = 4
+			GOSUB updateScore
+		END IF
 	ELSE
 		delayFrames = 0
 	END IF
@@ -419,9 +378,9 @@ setCursor: PROCEDURE
 	spriteY = PLAYFIELD_Y * 8 + (cursorY * 24) - 2
 	
 	cursorIndex = cursorY * PLAYFIELD_WIDTH + cursorX
-	color = 8
+	color = 2
 
-	IF game(cursorIndex) = 0 THEN color = 2
+	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = 8
 
 	spriteOff = (FRAME AND 8) * 2
 
