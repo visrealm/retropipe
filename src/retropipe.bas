@@ -108,6 +108,9 @@ DIM currentIndex
 DIM currentAnim     
 DIM currentAnimStep	' 0 to 23
 
+sin:
+	DATA BYTE 1,1,2,3,4,5,6,6,7,7,6,6,5,4,3,2,1,1,2,3,4,5,6,6,7,7,6,6,5,4,3,2
+
 main:
     ' what are we working with?
     GOSUB vdpDetect
@@ -123,6 +126,8 @@ main:
 	VDP_REG(5) = defaultReg(5)
 	VDP_REG(6) = defaultReg(6)
 
+	VDP_DISABLE_INT
+
 	FOR I = 0 TO 2
         DEFINE VRAM PLETTER #fontTable(I), $300, font
     NEXT I
@@ -131,13 +136,12 @@ main:
 		chute(0) = RANDOM(I)
 	NEXT I
 	
-	VDP_DISABLE_INT
-
 	FOR I = 0 TO CHUTE_SIZE - 1
 		chute(I) = RANDOM(7) + 2
 	NEXT I
 
     DEFINE CHAR 0, 24, logo
+	GOSUB updateLogo
 
     DEFINE CHAR 128, 30, grid
     DEFINE COLOR 128, 18, gridColor
@@ -203,12 +207,21 @@ main:
 		WAIT
 		IF gameState = GAME_STATE_FLOWING THEN
 			GOSUB flowTick
-		ELSEIF FRAME > 120 AND FRAME < 140 THEN
+		ELSEIF FRAME > 600 AND FRAME < 605 THEN
 			gameState = GAME_STATE_FLOWING
 		END IF
 
 		GOSUB uiTick
+		GOSUB updateLogo
 	WEND
+
+updateLogo: PROCEDURE
+	CONST LOGO_FRAME_DELAY = 4
+	IF FRAME AND (LOGO_FRAME_DELAY - 1) THEN RETURN
+	FOR I = 0 TO 11
+		DEFINE COLOR I + 12, 1, VARPTR logoColorWhiteGreen(sin(I + ((FRAME / LOGO_FRAME_DELAY) AND $f)))
+	NEXT I
+	END
 
 flowTick: PROCEDURE
 	VDP_DISABLE_INT
@@ -268,7 +281,7 @@ flowTick: PROCEDURE
 	END IF
 
 
-	IF (FRAME AND 3) = 3 THEN
+	IF (FRAME AND 7) = 7 THEN
 		currentAnimStep = currentAnimStep + 1
 
 		IF animSubStep = 7 AND skipAnim = 0 THEN
@@ -329,9 +342,13 @@ uiTick: PROCEDURE
 			GOSUB renderChuteCell 
 			chuteOffset = 4
 			GOSUB updateScore
+			r = RANDOM(0)
 		END IF
 	ELSE
 		delayFrames = 0
+		FOR I = 0 TO cursorY
+			r = RANDOM(0)
+		NEXT I
 	END IF
 
 	IF chuteOffset > 0 THEN

@@ -52,7 +52,7 @@ pipes:  ' empty (158) and filled (168)
     DATA BYTE $FF, $E0, $C0, $80, $80, $80, $80, $80    ' DR (MC)
     DATA BYTE $80, $80, $80, $80, $80, $C0, $E0, $FF    ' UR (MC)
     DATA BYTE $01, $01, $01, $01, $01, $03, $07, $FF    ' UL (MC)
-
+ 
 logo: ' RetroPIPE logo (0)
     DATA BYTE $0F, $3F, $7F, $7F, $F8, $F0, $F1, $F3     
     DATA BYTE $80, $C0, $E0, $F0, $F0, $F1, $F3, $F3     
@@ -66,7 +66,7 @@ logo: ' RetroPIPE logo (0)
     DATA BYTE $00, $C3, $E3, $F7, $F7, $F7, $F7, $F7     
     DATA BYTE $FC, $FC, $FC, $FC, $80, $80, $FC, $FC     
     DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $F7, $F7, $F7, $F7, $F3, $F3, $F1, $F1     
+    DATA BYTE $F7, $F7, $F7, $F7, $F3, $F3, $F1, $F1     ' bottom (12)
     DATA BYTE $E7, $C7, $C7, $C7, $E7, $E3, $F1, $F0     
     DATA BYTE $87, $9F, $9F, $C0, $F0, $FF, $FE, $7C     
     DATA BYTE $BC, $BC, $3E, $3F, $1F, $1F, $0F, $07     
@@ -109,6 +109,10 @@ pipeColor:
 
 pipeColorGreen:
     DATA BYTE $42, $42, $42, $42, $42, $42, $42, $42
+
+logoColorWhiteGreen:
+    DATA BYTE $f0, $f0, $f0, $f0, $f0, $f0, $f0, $f0
+    DATA BYTE $30, $20, $c0, $c0, $c0, $c0, $c0, $c0
 
 ' SPRITE PATTERNS
 
