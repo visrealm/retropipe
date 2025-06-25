@@ -84,8 +84,7 @@ CONST GAME_STATE_BUILDING = 0
 CONST GAME_STATE_FLOWING  = 1
 CONST GAME_STATE_FAILED   = 2
 
-CONST GAME_START_DELAY_SECONDS = 15
-CONST #GAME_START_DELAY_FRAMES  = GAME_START_DELAY_SECONDS * 60
+CONST GAME_START_DELAY_SECONDS = 10
 
 CONST POINTS_BUILD   		= 100
 CONST POINTS_REPLACE_DEDUCT = 50
@@ -217,9 +216,10 @@ main:
 	NEXT I
 
 	gameState = GAME_STATE_BUILDING
-	#gameFrame = 0
+	gameFrame = 0
 
 	VDP_ENABLE_INT
+	gameSeconds = 0
 
 	' main game loop
 	WHILE 1
@@ -227,24 +227,25 @@ main:
 		'VDP_DISABLE_INT
 		IF gameState = GAME_STATE_FLOWING THEN
 			GOSUB flowTick
-		ELSEIF #gameFrame > #GAME_START_DELAY_FRAMES AND #gameFrame < #GAME_START_DELAY_FRAMES + 5 THEN
+		ELSEIF gameSeconds = GAME_START_DELAY_SECONDS THEN
 			gameState = GAME_STATE_FLOWING
 		END IF
 
 		GOSUB uiTick
 		GOSUB logoTick
-		#gameFrame = #gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
+		gameFrame = gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
+		IF (gameFrame AND $3f) = 0 THEN gameSeconds = gameSeconds + 1
 		'VDP_ENABLE_INT
 	WEND
 
 logoTick: PROCEDURE
 	CONST LOGO_FRAME_DELAY = 4
-	logoOffset = FRAME AND $ff
-	IF logoOffset AND (LOGO_FRAME_DELAY - 1) THEN RETURN
-	logoOffset = (logoOffset / LOGO_FRAME_DELAY) AND $f
+	IF gameFrame AND (LOGO_FRAME_DELAY - 1) THEN RETURN
+	logoOffset = gameFrame / LOGO_FRAME_DELAY
+	logoOffset = logoOffset AND $f
 
 	FOR I = 0 TO 11
-		DEFINE COLOR I + 12, 1, VARPTR logoColorWhiteGreen(sin(I + logoOffset))
+		DEFINE COLOR I + 12, 1, VARPTR logoColorWhiteGreen(sin(logoOffset + 11 - I))
 	NEXT I
 	END
 
@@ -310,7 +311,7 @@ flowTick: PROCEDURE
 		currentAnim = anims(tileId * 4 + (currentAnim AND 3))
 	END IF
 
-	IF (#gameFrame AND 1) = 1 THEN
+	IF (gameFrame AND 1) = 1 THEN
 		nameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
 		nameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
 
@@ -514,7 +515,7 @@ setCursor: PROCEDURE
 
 	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = 8
 
-	spriteOff = (#gameFrame AND 8) * 2
+	spriteOff = (gameFrame AND 8) * 2
 
 	SPRITE 0, spriteY, spriteX, spriteOff, color
 	SPRITE 1, spriteY + 16, spriteX, spriteOff + 8, color
