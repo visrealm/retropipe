@@ -84,8 +84,8 @@ CONST GAME_STATE_BUILDING = 0
 CONST GAME_STATE_FLOWING  = 1
 CONST GAME_STATE_FAILED   = 2
 
-CONST GAME_START_DELAY_SECONDS = 5
-CONST GAME_START_DELAY_FRAMES  = GAME_START_DELAY_SECONDS * 60
+CONST GAME_START_DELAY_SECONDS = 15
+CONST #GAME_START_DELAY_FRAMES  = GAME_START_DELAY_SECONDS * 60
 
 CONST POINTS_BUILD   		= 100
 CONST POINTS_REPLACE_DEDUCT = 50
@@ -152,7 +152,7 @@ main:
 
 
     DEFINE CHAR 0, 24, logo
-	GOSUB updateLogo
+	'GOSUB updateLogo
 
     DEFINE CHAR 128, 30, grid
     DEFINE COLOR 128, 18, gridColor
@@ -217,27 +217,32 @@ main:
 	NEXT I
 
 	gameState = GAME_STATE_BUILDING
-	gameFrame = 0
+	#gameFrame = 0
 
 	VDP_ENABLE_INT
 
+	' main game loop
 	WHILE 1
 		WAIT
+		'VDP_DISABLE_INT
 		IF gameState = GAME_STATE_FLOWING THEN
 			GOSUB flowTick
-		ELSEIF gameFrame > GAME_START_DELAY_FRAMES AND gameFrame < GAME_START_DELAY_FRAMES + 5 THEN
+		ELSEIF #gameFrame > #GAME_START_DELAY_FRAMES AND #gameFrame < #GAME_START_DELAY_FRAMES + 5 THEN
 			gameState = GAME_STATE_FLOWING
 		END IF
 
 		GOSUB uiTick
-		GOSUB updateLogo
-		gameFrame = gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
+		GOSUB logoTick
+		#gameFrame = #gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
+		'VDP_ENABLE_INT
 	WEND
 
-updateLogo: PROCEDURE
+logoTick: PROCEDURE
 	CONST LOGO_FRAME_DELAY = 4
-	IF gameFrame AND (LOGO_FRAME_DELAY - 1) THEN RETURN
-	logoOffset = ((gameFrame / LOGO_FRAME_DELAY) AND $f)
+	logoOffset = FRAME AND $ff
+	IF logoOffset AND (LOGO_FRAME_DELAY - 1) THEN RETURN
+	logoOffset = (logoOffset / LOGO_FRAME_DELAY) AND $f
+
 	FOR I = 0 TO 11
 		DEFINE COLOR I + 12, 1, VARPTR logoColorWhiteGreen(sin(I + logoOffset))
 	NEXT I
@@ -245,7 +250,7 @@ updateLogo: PROCEDURE
 
 
 flowTick: PROCEDURE
-	VDP_DISABLE_INT
+'	VDP_DISABLE_INT
 
 	animTile = currentAnimStep / 8
 	animSubStep = currentAnimStep AND $07
@@ -305,7 +310,7 @@ flowTick: PROCEDURE
 		currentAnim = anims(tileId * 4 + (currentAnim AND 3))
 	END IF
 
-	IF (gameFrame AND 7) = 7 THEN
+	IF (#gameFrame AND 1) = 1 THEN
 		nameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
 		nameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
 
@@ -317,7 +322,9 @@ flowTick: PROCEDURE
 		animSprX = (nameX + (currentSubTile AND 3)) * 8
 		animSprY = (nameY + (currentSubTile / 32)) * 8
 
-		IF currentSubTile = SUBTILE_MC AND ((currentAnim XOR (currentAnim / 16)) AND 3) THEN
+		IF skipAnim AND (currentSubTile = SUBTILE_MC) THEN
+
+		ELSEIF currentSubTile = SUBTILE_MC AND ((currentAnim XOR (currentAnim / 16)) AND 3) THEN
 			IF currentAnim = ANIM_FLOW_RIGHT_UP THEN
 				offset = animSubStep * 8
 				FOR I = 0 TO 7
@@ -359,7 +366,7 @@ flowTick: PROCEDURE
 					flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset + 7 - I))
 				NEXT I
 			END IF
-		ELSE		
+		ELSE
 			SELECT CASE currentFlowDir
 				CASE FLOW_LEFT
 					flowAnimTemp = (flowAnimTemp * 2) OR $01
@@ -375,7 +382,6 @@ flowTick: PROCEDURE
 					flowAnimBuffer(7 - animSubStep) = NOT pipes(currentIndexPattId + 7 - animSubStep)
 				CASE FLOW_DOWN
 					flowAnimBuffer(animSubStep) = NOT pipes(currentIndexPattId + animSubStep)
-					' TODO: corner animations
 			END SELECT
 		END IF
 		IF animSubStep = 7 AND skipAnim = 0 THEN
@@ -397,7 +403,7 @@ flowTick: PROCEDURE
 		END IF
 	END IF
 
-	VDP_ENABLE_INT
+	'VDP_ENABLE_INT
 	END
 
 
@@ -410,7 +416,7 @@ uiTick: PROCEDURE
 		RETURN
 	END IF
 
-	VDP_DISABLE_INT
+	'VDP_DISABLE_INT
 
 	delayFrames = 8
 	IF NAV(NAV_RIGHT) AND cursorX < (PLAYFIELD_WIDTH - 1) THEN
@@ -440,7 +446,7 @@ uiTick: PROCEDURE
 
 	GOSUB setCursor
 
-	VDP_ENABLE_INT
+	'VDP_ENABLE_INT
 	END
 
 updateScore: PROCEDURE
@@ -508,7 +514,7 @@ setCursor: PROCEDURE
 
 	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = 8
 
-	spriteOff = (gameFrame AND 8) * 2
+	spriteOff = (#gameFrame AND 8) * 2
 
 	SPRITE 0, spriteY, spriteX, spriteOff, color
 	SPRITE 1, spriteY + 16, spriteX, spriteOff + 8, color
