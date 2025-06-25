@@ -215,8 +215,6 @@ main:
 	FOR I = 0 TO 7
 		flowAnimBuffer(I) = 0
 	NEXT I
-	DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
-
 
 	gameState = GAME_STATE_BUILDING
 	gameFrame = 0
@@ -316,32 +314,70 @@ flowTick: PROCEDURE
 
 		currentAnimStep = currentAnimStep + 1
 
-		animSprX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
-		animSprY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
+		animSprX = (nameX + (currentSubTile AND 3)) * 8
+		animSprY = (nameY + (currentSubTile / 32)) * 8
 
-		animSprX = (animSprX + (currentSubTile AND 3)) * 8
-		animSprY = (animSprY + (currentSubTile / 32)) * 8
-		
-		SELECT CASE currentFlowDir
-			CASE FLOW_LEFT
-				flowAnimTemp = (flowAnimTemp * 2) OR $01
+		IF currentSubTile = SUBTILE_MC AND ((currentAnim XOR (currentAnim / 16)) AND 3) THEN
+			IF currentAnim = ANIM_FLOW_RIGHT_UP THEN
+				offset = animSubStep * 8
 				FOR I = 0 TO 7
-					flowAnimBuffer(I) = flowAnimTemp AND NOT pipes(currentIndexPattId + I)
+					flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset + I))
 				NEXT I
-			CASE FLOW_RIGHT
-				flowAnimTemp = (flowAnimTemp / 2) OR $80
+			ELSEIF currentAnim = ANIM_FLOW_RIGHT_DOWN THEN
+				offset = animSubStep * 8
 				FOR I = 0 TO 7
-					flowAnimBuffer(I) = flowAnimTemp AND NOT pipes(currentIndexPattId + I)
+					flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset + 7 - I))
 				NEXT I
-			CASE FLOW_UP
+			ELSEIF currentAnim = ANIM_FLOW_DOWN_LEFT THEN
+				offset = animSubStep * 8
+				FOR I = 0 TO 7
+					flowAnimBuffer(I) = cornerFlowDownLeft(offset + I)
+				NEXT I
+			ELSEIF currentAnim = ANIM_FLOW_DOWN_RIGHT THEN
+				offset = animSubStep * 8
+				FOR I = 0 TO 7
+					flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset + I))
+				NEXT I
+			ELSEIF currentAnim = ANIM_FLOW_LEFT_UP THEN
+				offset = animSubStep * 8
+				FOR I = 0 TO 7
+					flowAnimBuffer(I) = cornerFlowLeftUp(offset + I)
+				NEXT I
+			ELSEIF currentAnim = ANIM_FLOW_LEFT_DOWN THEN
+				offset = animSubStep * 8
+				FOR I = 0 TO 7
+					flowAnimBuffer(I) = cornerFlowLeftUp(offset + 7 - I)
+				NEXT I
+			ELSEIF currentAnim = ANIM_FLOW_UP_LEFT THEN
+				offset = animSubStep * 8
+				FOR I = 0 TO 7
+					flowAnimBuffer(I) = cornerFlowDownLeft(offset + 7 - I)
+				NEXT I
+			ELSEIF currentAnim = ANIM_FLOW_UP_RIGHT THEN
+				offset = animSubStep * 8
+				FOR I = 0 TO 7
+					flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset + 7 - I))
+				NEXT I
+			END IF
+		ELSE		
+			SELECT CASE currentFlowDir
+				CASE FLOW_LEFT
+					flowAnimTemp = (flowAnimTemp * 2) OR $01
+					FOR I = 0 TO 7
+						flowAnimBuffer(I) = flowAnimTemp AND NOT pipes(currentIndexPattId + I)
+					NEXT I
+				CASE FLOW_RIGHT
+					flowAnimTemp = (flowAnimTemp / 2) OR $80
+					FOR I = 0 TO 7
+						flowAnimBuffer(I) = flowAnimTemp AND NOT pipes(currentIndexPattId + I)
+					NEXT I
+				CASE FLOW_UP
 					flowAnimBuffer(7 - animSubStep) = NOT pipes(currentIndexPattId + 7 - animSubStep)
-			CASE FLOW_DOWN
+				CASE FLOW_DOWN
 					flowAnimBuffer(animSubStep) = NOT pipes(currentIndexPattId + animSubStep)
-		END SELECT
-		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
-
-		SPRITE 4, animSprY - 1, animSprX, 32, $2
-
+					' TODO: corner animations
+			END SELECT
+		END IF
 		IF animSubStep = 7 AND skipAnim = 0 THEN
 			c = VPEEK(#currentIndexAddr)
 			VPOKE #currentIndexAddr, c + 10
@@ -350,9 +386,14 @@ flowTick: PROCEDURE
 			FOR I = 0 TO 7
 				flowAnimBuffer(I) = 0
 			NEXT I
+
 			DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
 
 			SPRITE 4, animSprY - 1, animSprX, 32, 0
+		ELSE
+			DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
+
+			SPRITE 4, animSprY - 1, animSprX, 32, $2
 		END IF
 	END IF
 
