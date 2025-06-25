@@ -84,6 +84,14 @@ CONST GAME_STATE_BUILDING = 0
 CONST GAME_STATE_FLOWING  = 1
 CONST GAME_STATE_FAILED   = 2
 
+CONST GAME_START_DELAY_SECONDS = 5
+CONST GAME_START_DELAY_FRAMES  = GAME_START_DELAY_SECONDS * 60
+
+CONST POINTS_BUILD   		= 100
+CONST POINTS_REPLACE_DEDUCT = 50
+CONST POINTS_FLOW_TILE      = 100
+
+
 anims:
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
@@ -137,10 +145,6 @@ main:
 	FOR I = 0 TO 2
         DEFINE VRAM PLETTER #fontTable(I), $300, font
     NEXT I
-
-	FOR I = 0 TO FRAME
-		chute(0) = RANDOM(I)
-	NEXT I
 	
 	FOR I = 0 TO CHUTE_SIZE - 1
 		chute(I) = RANDOM(7) + 2
@@ -188,7 +192,7 @@ main:
 	#score = 0
 
 	PRINT AT XY(20,0), "LEVEL: 1"
-	PRINT AT XY(20,1), "SCORE: ", <5>#score
+	PRINT AT XY(20,1), "SCORE: "
 
 	chuteOffset = 20
 
@@ -215,6 +219,7 @@ main:
 
 
 	gameState = GAME_STATE_BUILDING
+	gameFrame = 0
 
 	VDP_ENABLE_INT
 
@@ -222,22 +227,21 @@ main:
 		WAIT
 		IF gameState = GAME_STATE_FLOWING THEN
 			GOSUB flowTick
-		ELSEIF FRAME > 120 AND FRAME < 125 THEN
+		ELSEIF gameFrame > GAME_START_DELAY_FRAMES AND gameFrame < GAME_START_DELAY_FRAMES + 5 THEN
 			gameState = GAME_STATE_FLOWING
 		END IF
 
 		GOSUB uiTick
 		GOSUB updateLogo
+		gameFrame = gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
 	WEND
-
-
-
 
 updateLogo: PROCEDURE
 	CONST LOGO_FRAME_DELAY = 4
-	IF FRAME AND (LOGO_FRAME_DELAY - 1) THEN RETURN
+	IF gameFrame AND (LOGO_FRAME_DELAY - 1) THEN RETURN
+	logoOffset = ((gameFrame / LOGO_FRAME_DELAY) AND $f)
 	FOR I = 0 TO 11
-		DEFINE COLOR I + 12, 1, VARPTR logoColorWhiteGreen(sin(I + ((FRAME / LOGO_FRAME_DELAY) AND $f)))
+		DEFINE COLOR I + 12, 1, VARPTR logoColorWhiteGreen(sin(I + logoOffset))
 	NEXT I
 	END
 
@@ -297,13 +301,13 @@ flowTick: PROCEDURE
 			gameState = GAME_STATE_FAILED
 		ELSE
 			game(currentIndex) = tileId OR CELL_LOCKED_FLAG
-			#score = #score + 100
+			#score = #score + POINTS_FLOW_TILE
 			GOSUB updateScore
 		END IF
 		currentAnim = anims(tileId * 4 + (currentAnim AND 3))
 	END IF
 
-	IF (FRAME AND 7) = 7 THEN
+	IF (gameFrame AND 7) = 7 THEN
 		nameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
 		nameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
 
@@ -339,11 +343,6 @@ flowTick: PROCEDURE
 		SPRITE 4, animSprY - 1, animSprX, 32, $2
 
 		IF animSubStep = 7 AND skipAnim = 0 THEN
-			'nameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
-			'nameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
-
-			'#addr = #VDP_NAME_TAB + XY(nameX, nameY) + currentSubTile
-
 			c = VPEEK(#currentIndexAddr)
 			VPOKE #currentIndexAddr, c + 10
 
@@ -384,32 +383,11 @@ uiTick: PROCEDURE
 	ELSEIF NAV(NAV_OK) THEN
 		tileId = game(cursorIndex)
 		IF (tileId AND CELL_LOCKED_FLAG) = 0 THEN
-			tileId = tileId AND CELL_TILE_MASK
-			IF tileId > 0 THEN
-				#score = #score - 50
-			ELSE
-				#score = #score + 100
-			END IF
-			if #score > 65485 then #score = 0
-
-			g_type = chute(CHUTE_SIZE - 1)
-			g_cell = cursorIndex
-			game(cursorIndex) = g_type
-			GOSUB renderGameCell
-			FOR I = CHUTE_SIZE - 1 TO 1 STEP - 1
-				chute(I) = chute(I - 1)
-			NEXT I
-			chute(0) = RANDOM(7) + 2
-			g_cell = CHUTE_SIZE - 1
-			g_type = CELL_CLEAR
-			GOSUB renderChuteCell 
-			chuteOffset = 4
-			GOSUB updateScore
-			r = RANDOM(255)
+			GOSUB placeTile
 		END IF
 	ELSE
 		delayFrames = 0
-		FOR I = 0 TO cursorY
+		FOR I = 0 TO cursorY + cursorX
 			r = RANDOM(255)
 		NEXT I
 	END IF
@@ -428,10 +406,37 @@ updateScore: PROCEDURE
 	PRINT AT XY(27,1), <5>#score
 	END
 
+placeTile: PROCEDURE
+	tileId = tileId AND CELL_TILE_MASK
+	IF tileId > 0 THEN
+		#score = #score - POINTS_REPLACE_DEDUCT
+		
+		' test going negative
+		IF #score > 65485 then #score = 0
+	ELSE
+		#score = #score + POINTS_BUILD
+	END IF
+	
+
+	g_type = chute(0)
+	g_cell = cursorIndex
+	game(cursorIndex) = g_type
+	GOSUB renderGameCell
+	FOR I = 0 TO CHUTE_SIZE - 2
+		chute(I) = chute(I + 1)
+	NEXT I
+	chute(CHUTE_SIZE - 1) = RANDOM(7) + 2
+	g_cell = CHUTE_SIZE - 1
+	g_type = CELL_CLEAR
+	GOSUB renderChuteCell 
+	chuteOffset = 4
+	GOSUB updateScore
+	END
 
 renderChute: PROCEDURE
+	g_cell = CHUTE_SIZE
 	FOR I = 0 TO CHUTE_SIZE - 1
-		g_cell = I
+		g_cell = g_cell - 1
 		g_type = chute(I)
 		GOSUB renderChuteCell
 	NEXT I
@@ -462,7 +467,7 @@ setCursor: PROCEDURE
 
 	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = 8
 
-	spriteOff = (FRAME AND 8) * 2
+	spriteOff = (gameFrame AND 8) * 2
 
 	SPRITE 0, spriteY, spriteX, spriteOff, color
 	SPRITE 1, spriteY + 16, spriteX, spriteOff + 8, color
