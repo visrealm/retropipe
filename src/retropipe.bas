@@ -145,13 +145,7 @@ main:
         DEFINE VRAM PLETTER #fontTable(I), $300, font
     NEXT I
 	
-	FOR I = 0 TO CHUTE_SIZE - 1
-		chute(I) = RANDOM(7) + 2
-	NEXT I
-
-
     DEFINE CHAR 0, 24, logo
-	'GOSUB updateLogo
 
     DEFINE CHAR 128, 30, grid
     DEFINE COLOR 128, 18, gridColor
@@ -186,12 +180,22 @@ main:
 
 	DEFINE SPRITE 0, 8, selSprites
 
+	WHILE 1
+		GOSUB pipeGame
+	WEND
+
+pipeGame: PROCEDURE
 	cursorX = 4
 	cursorY = 3
 	#score = 0
 
+	FOR I = 0 TO CHUTE_SIZE - 1
+		chute(I) = RANDOM(7) + 2
+	NEXT I
+
 	PRINT AT XY(20,0), "LEVEL: 1"
 	PRINT AT XY(20,1), "SCORE: "
+	GOSUB updateScore
 
 	chuteOffset = 20
 
@@ -229,6 +233,13 @@ main:
 			GOSUB flowTick
 		ELSEIF gameSeconds = GAME_START_DELAY_SECONDS THEN
 			gameState = GAME_STATE_FLOWING
+		ELSEIF gameState = GAME_STATE_FAILED THEN
+			FOR I = 0 TO CHUTE_SIZE - 1
+				chute(I) = CELL_CLEAR
+			NEXT I
+			GOSUB renderChute
+
+			IF gameSeconds = 5 THEN EXIT WHILE
 		END IF
 
 		GOSUB uiTick
@@ -237,6 +248,7 @@ main:
 		IF (gameFrame AND $3f) = 0 THEN gameSeconds = gameSeconds + 1
 		'VDP_ENABLE_INT
 	WEND
+	END
 
 logoTick: PROCEDURE
 	CONST LOGO_FRAME_DELAY = 4
@@ -270,6 +282,7 @@ flowTick: PROCEDURE
 				currentSubTile = SUBTILE_BC
 			CASE ELSE
 				gameState = GAME_STATE_FAILED
+				gameSeconds = 0
 		END SELECT
 
 	ELSEIF animTile = 1 THEN
@@ -303,6 +316,7 @@ flowTick: PROCEDURE
 		tileId = game(currentIndex) AND CELL_TILE_MASK
 		IF tileId < 2 THEN
 			gameState = GAME_STATE_FAILED
+			gameSeconds = 0
 		ELSE
 			game(currentIndex) = tileId OR CELL_LOCKED_FLAG
 			#score = #score + POINTS_FLOW_TILE
@@ -428,7 +442,7 @@ uiTick: PROCEDURE
 		cursorY = cursorY + 1
 	ELSEIF NAV(NAV_UP) AND cursorY > 0 THEN
 		cursorY = cursorY - 1
-	ELSEIF NAV(NAV_OK) THEN
+	ELSEIF NAV(NAV_OK) AND gameState <> GAME_STATE_FAILED THEN
 		tileId = game(cursorIndex)
 		IF (tileId AND CELL_LOCKED_FLAG) = 0 THEN
 			GOSUB placeTile
@@ -514,6 +528,7 @@ setCursor: PROCEDURE
 	color = 2
 
 	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = 8
+	IF gameState = GAME_STATE_FAILED THEN color = 0
 
 	spriteOff = (gameFrame AND 8) * 2
 

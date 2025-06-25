@@ -48,10 +48,8 @@ updateNavInput: PROCEDURE
     IF CONT.LEFT OR (CONT1.KEY = "S") OR (CONT1.KEY = ",") THEN g_nav = g_nav OR NAV_LEFT
 
     ' <LBUTTON> or <SPACE> OR <ENTER>
-    IF CONT.BUTTON2 OR (CONT1.KEY = " ") OR (CONT1.KEY = 11) THEN g_nav = g_nav OR NAV_OK
+    IF CONT.BUTTON OR CONT.BUTTON2 OR (CONT1.KEY = " ") OR (CONT1.KEY = 11) THEN g_nav = g_nav OR NAV_OK
 
-    ' <RBUTTON> or <Q> OR <ESC>
-    IF CONT.BUTTON OR (CONT1.KEY = "Q") OR (CONT1.KEY = 27) THEN g_nav = g_nav OR NAV_CANCEL
     END
 
 
