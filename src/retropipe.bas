@@ -530,6 +530,7 @@ renderGameCell: PROCEDURE
 renderChuteCell: PROCEDURE
 	nameX = CHUTE_X
 	nameY = (CHUTE_Y + (g_cell * 3)) - chuteOffset
+	IF nameY > 23 OR  nameY < PLAYFIELD_Y THEN RETURN
 
 	GOSUB renderCell
 	END
@@ -544,11 +545,14 @@ updateCursorPos: PROCEDURE
 renderCell: PROCEDURE
 	index = g_type * 9
 
+	#addr = NAME_TAB_XY(nameX, nameY)
+	
 	FOR J = 0 TO 2
 		IF nameY > 23 THEN RETURN
-		IF nameY >= PLAYFIELD_Y THEN DEFINE VRAM NAME_TAB_XY(nameX, nameY), 3, VARPTR cellNames(index)
+		IF nameY >= PLAYFIELD_Y THEN DEFINE VRAM #addr, 3, VARPTR cellNames(index)
 		index = index + 3
 		nameY = nameY + 1
+		#addr = #addr + 32
 	NEXT J
 	END
 
