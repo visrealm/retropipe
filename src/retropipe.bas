@@ -90,6 +90,7 @@ anims:
 	DATA BYTE ANIM_FLOW_RIGHT_DOWN, ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_UP_LEFT
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_DOWN_RIGHT, ANIM_FLOW_LEFT_UP,   ANIM_FLOW_INVALID
 	DATA BYTE ANIM_FLOW_RIGHT_UP,   ANIM_FLOW_DOWN_LEFT,  ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_LEFT,      ANIM_FLOW_INVALID
 
 DIM chute(CHUTE_SIZE + 1)
 DIM game(PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT)
@@ -166,10 +167,7 @@ main:
 	NEXT I
 
 	DEFINE SPRITE 0, 8, selSprites
-
-	' clear dynamic flow sprite patterns
-	DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 16, emptyTile
-	DEFINE VRAM #VDP_SPRITE_PATT + 34 * 8, 16, emptyTile
+	'SPRITE 5, $d0, 0, 0, 0
 
 	WHILE 1
 		GOSUB pipeGame
@@ -182,6 +180,10 @@ pipeGame: PROCEDURE
 
 	' render chute bottom
 	DEFINE VRAM NAME_TAB_XY(0, PLAYFIELD_Y + CHUTE_SIZE * 3), 5, chuteBottomNames
+
+	' clear dynamic flow sprite patterns
+	DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 16, emptyTile
+	DEFINE VRAM #VDP_SPRITE_PATT + 34 * 8, 16, emptyTile
 
 	FOR I = 0 TO CHUTE_SIZE - 1
 		chute(I) = RANDOM(7) + 2
@@ -267,6 +269,8 @@ flowTick: PROCEDURE
 	skipAnim = 0	
 	IF animTile = 0 THEN
 		currentFlowDir = (currentAnim / 16) AND 7
+
+		' TI-99, this needs to be the expression. can't use currentFlowDir????
 		SELECT CASE (currentAnim / 16) AND 7
 			CASE FLOW_RIGHT
 				currentSubTile = SUBTILE_ML
@@ -375,22 +379,23 @@ flowTick: PROCEDURE
 				NEXT I
 			END IF
 		ELSE
-			SELECT CASE currentFlowDir
-				CASE FLOW_LEFT
-					flowAnimTemp = (flowAnimTemp * 2) OR $01
-					FOR I = 0 TO 7
-						flowAnimBuffer(I) = flowAnimTemp AND NOT pipes(currentIndexPattId + I)
-					NEXT I
-				CASE FLOW_RIGHT
-					flowAnimTemp = (flowAnimTemp / 2) OR $80
-					FOR I = 0 TO 7
-						flowAnimBuffer(I) = flowAnimTemp AND NOT pipes(currentIndexPattId + I)
-					NEXT I
-				CASE FLOW_UP
-					flowAnimBuffer(7 - animSubStep) = NOT pipes(currentIndexPattId + 7 - animSubStep)
-				CASE FLOW_DOWN
-					flowAnimBuffer(animSubStep) = NOT pipes(currentIndexPattId + animSubStep)
-			END SELECT
+			IF currentFlowDir = FLOW_LEFT THEN
+				flowAnimTemp = (flowAnimTemp * 2) OR $01
+				FOR I = 0 TO 7
+					' NABU: For some reason  flowAnimTemp AND NOT pipes(currentIndexPattId + I))
+					'       doesn't work. results in $ff
+					flowAnimBuffer(I) = (NOT pipes(currentIndexPattId + I)) AND flowAnimTemp
+				NEXT I
+			ELSEIF currentFlowDir = FLOW_RIGHT THEN
+				flowAnimTemp = (flowAnimTemp / 2) OR $80
+				FOR I = 0 TO 7
+					flowAnimBuffer(I) = NOT pipes(currentIndexPattId + I) AND flowAnimTemp
+				NEXT I
+			ELSEIF currentFlowDir = FLOW_UP THEN
+				flowAnimBuffer(7 - animSubStep) = NOT pipes(currentIndexPattId + 7 - animSubStep)
+			ELSEIF currentFlowDir = FLOW_DOWN THEN
+				flowAnimBuffer(animSubStep) = NOT pipes(currentIndexPattId + animSubStep)
+			END IF
 		END IF
 		IF animSubStep = 7 AND skipAnim = 0 THEN
 			c = VPEEK(#currentIndexAddr)
@@ -404,7 +409,7 @@ flowTick: PROCEDURE
 			DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
 
 			SPRITE 4, animSprY - 1, animSprX, 32, 0
-		ELSE
+		ELSEIF gameState <> GAME_STATE_FAILED THEN
 			DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
 
 			SPRITE 4, animSprY - 1, animSprX, 32, $2
@@ -417,6 +422,7 @@ flowTick: PROCEDURE
 
 uiTick: PROCEDURE
 	GOSUB updateNavInput
+	PRINT AT 0, CONT1.KEY,NOT CONT1.KEY
 	savedNav = savedNav OR g_nav
 	IF g_nav > 0 AND delayFrames > 0 THEN
 		delayFrames = delayFrames - 1
@@ -428,7 +434,12 @@ uiTick: PROCEDURE
 	SOUND 0,,0
 
 	delayFrames = 8
-	IF NAV(NAV_RIGHT) AND cursorX < (PLAYFIELD_WIDTH - 1) THEN
+	IF NAV(NAV_OK) AND gameState <> GAME_STATE_FAILED THEN
+		tileId = game(cursorIndex)
+		IF (tileId AND CELL_LOCKED_FLAG) = 0 THEN
+			GOSUB placeTile
+		END IF
+	ELSEIF NAV(NAV_RIGHT) AND cursorX < (PLAYFIELD_WIDTH - 1) THEN
 		cursorX = cursorX + 1
 	ELSEIF NAV(NAV_LEFT) AND cursorX > 0 THEN
 		cursorX = cursorX - 1
@@ -436,11 +447,6 @@ uiTick: PROCEDURE
 		cursorY = cursorY + 1
 	ELSEIF NAV(NAV_UP) AND cursorY > 0 THEN
 		cursorY = cursorY - 1
-	ELSEIF NAV(NAV_OK) AND gameState <> GAME_STATE_FAILED THEN
-		tileId = game(cursorIndex)
-		IF (tileId AND CELL_LOCKED_FLAG) = 0 THEN
-			GOSUB placeTile
-		END IF
 	ELSE
 		delayFrames = 0
 		FOR I = 0 TO cursorY + cursorX
@@ -541,11 +547,12 @@ setCursor: PROCEDURE
 renderCell: PROCEDURE
 	index = g_type * 9
 
-	IF nameY > 23 THEN RETURN
-
-	IF nameY >= PLAYFIELD_Y THEN DEFINE VRAM NAME_TAB_XY(nameX, nameY), 3, VARPTR cellNames(index)
-	IF nameY + 1 >= PLAYFIELD_Y THEN DEFINE VRAM NAME_TAB_XY(nameX, nameY + 1), 3, VARPTR cellNames(index + 3)
-	IF nameY + 2 >= PLAYFIELD_Y THEN DEFINE VRAM NAME_TAB_XY(nameX, nameY + 2), 3, VARPTR cellNames(index + 6)
+	FOR J = 0 TO 2
+		IF nameY > 23 THEN RETURN
+		IF nameY >= PLAYFIELD_Y THEN DEFINE VRAM NAME_TAB_XY(nameX, nameY), 3, VARPTR cellNames(index)
+		index = index + 3
+		nameY = nameY + 1
+	NEXT J
 	END
 
 
