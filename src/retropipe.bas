@@ -240,7 +240,7 @@ pipeGame: PROCEDURE
 		ELSEIF gameSeconds = GAME_START_DELAY_SECONDS THEN
 			gameState = GAME_STATE_FLOWING
 		ELSEIF gameState = GAME_STATE_FAILED THEN
-			IF gameSeconds < 1 THEN
+			IF gameSeconds < 2 THEN
 				chuteOffset = chuteOffset - 1
 				GOSUB renderChute
 			ELSEIF gameSeconds = 3 THEN
@@ -546,7 +546,7 @@ renderCell: PROCEDURE
 	index = g_type * 9
 
 	#addr = NAME_TAB_XY(nameX, nameY)
-	
+
 	FOR J = 0 TO 2
 		IF nameY > 23 THEN RETURN
 		IF nameY >= PLAYFIELD_Y THEN DEFINE VRAM #addr, 3, VARPTR cellNames(index)
