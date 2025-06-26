@@ -3,9 +3,6 @@ GOTO main
 include "vdp-utils.bas"
 include "input.bas"
 
-#fontTable:
-    DATA $0100, $0900, $1100
-
 CONST PLAYFIELD_X = 5
 CONST PLAYFIELD_Y = 3
 CONST PLAYFIELD_WIDTH = 9
@@ -25,15 +22,7 @@ CONST CELL_PIPE_DL   = 6
 CONST CELL_PIPE_UR   = 7
 CONST CELL_PIPE_UL   = 8
 CONST CELL_PIPE_ST   = 9
-'CONST CELL_FILL_H    = 10	' bit 3 (8) set
-'CONST CELL_FILL_V    = 11
-'CONST CELL_FILL_XH   = 12
-'CONST CELL_FILL_XV   = 13
-'CONST CELL_FILL_XX   = 14
-'CONST CELL_FILL_DR   = 15
-'CONST CELL_FILL_DL   = 16
-'CONST CELL_FILL_UR   = 17
-'CONST CELL_FILL_UL   = 18
+
 CONST CELL_CLEAR     = 19
 
 CONST CELL_LOCKED_FLAG = $80
@@ -102,7 +91,7 @@ anims:
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_DOWN_RIGHT, ANIM_FLOW_LEFT_UP,   ANIM_FLOW_INVALID
 	DATA BYTE ANIM_FLOW_RIGHT_UP,   ANIM_FLOW_DOWN_LEFT,  ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
 
-DIM chute(6)
+DIM chute(CHUTE_SIZE + 1)
 DIM game(PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT)
 DIM #score
 DIM chuteOffset
@@ -126,8 +115,7 @@ sin:
 
 main:
     ' what are we working with?
-    GOSUB vdpDetect
-	VDP_ENABLE_INT_DISP_OFF
+'    GOSUB vdpDetect
 
 	VDP_REG(50) = $80  ' reset VDP registers to boot values
 	VDP_REG(7) = defaultReg(7)
@@ -139,11 +127,9 @@ main:
 	VDP_REG(5) = defaultReg(5)
 	VDP_REG(6) = defaultReg(6)
 
-	VDP_DISABLE_INT
-
-	FOR I = 0 TO 2
-        DEFINE VRAM PLETTER #fontTable(I), $300, font
-    NEXT I
+	FOR #I = $0100 TO $1100 STEP $0800
+        DEFINE VRAM PLETTER #I, $300, font
+    NEXT #I
 	
     DEFINE CHAR 0, 24, logo
 
@@ -173,7 +159,6 @@ main:
 	FOR I = PLAYFIELD_Y TO PLAYFIELD_Y + CHUTE_SIZE * 3 - 1
 		DEFINE VRAM NAME_TAB_XY(0, I), 5, chuteNames
 	NEXT I
-	DEFINE VRAM NAME_TAB_XY(0, PLAYFIELD_Y + CHUTE_SIZE * 3), 5, chuteBottomNames
 	FOR I = PLAYFIELD_Y + CHUTE_SIZE * 3 + 1 TO 23
 		PUT_XY(4, I), 183
 	NEXT I
@@ -189,9 +174,13 @@ pipeGame: PROCEDURE
 	cursorY = 3
 	#score = 0
 
+	' render chute bottom
+	DEFINE VRAM NAME_TAB_XY(0, PLAYFIELD_Y + CHUTE_SIZE * 3), 5, chuteBottomNames
+
 	FOR I = 0 TO CHUTE_SIZE - 1
 		chute(I) = RANDOM(7) + 2
 	NEXT I
+	chute(CHUTE_SIZE) = CELL_CLEAR
 
 	PRINT AT XY(20,0), "LEVEL: 1"
 	PRINT AT XY(20,1), "SCORE: "
@@ -234,12 +223,13 @@ pipeGame: PROCEDURE
 		ELSEIF gameSeconds = GAME_START_DELAY_SECONDS THEN
 			gameState = GAME_STATE_FLOWING
 		ELSEIF gameState = GAME_STATE_FAILED THEN
-			FOR I = 0 TO CHUTE_SIZE - 1
-				chute(I) = CELL_CLEAR
-			NEXT I
+			'FOR I = 0 TO CHUTE_SIZE - 1
+		'		chute(I) = CELL_CLEAR
+		'	NEXT I
+			IF gameSeconds < 2 THEN chuteOffset = chuteOffset - 1
 			GOSUB renderChute
 
-			IF gameSeconds = 5 THEN EXIT WHILE
+			IF gameSeconds = 3 THEN EXIT WHILE
 		END IF
 
 		GOSUB uiTick
@@ -454,7 +444,7 @@ uiTick: PROCEDURE
 		NEXT I
 	END IF
 
-	IF chuteOffset > 0 THEN
+	IF gameState = GAME_STATE_BUILDING AND chuteOffset > 0 THEN
 		chuteOffset = chuteOffset - 1
 		GOSUB renderChute
 	END IF
@@ -497,7 +487,7 @@ placeTile: PROCEDURE
 
 renderChute: PROCEDURE
 	g_cell = CHUTE_SIZE
-	FOR I = 0 TO CHUTE_SIZE - 1
+	FOR I = 0 TO CHUTE_SIZE
 		g_cell = g_cell - 1
 		g_type = chute(I)
 		GOSUB renderChuteCell
@@ -525,17 +515,19 @@ setCursor: PROCEDURE
 	spriteY = PLAYFIELD_Y * 8 + (cursorY * 24) - 2
 	
 	cursorIndex = cursorY * PLAYFIELD_WIDTH + cursorX
-	color = 2
+	color = 15
 
+	IF gameFrame AND 8 THEN color = 14
 	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = 8
 	IF gameState = GAME_STATE_FAILED THEN color = 0
 
-	spriteOff = (gameFrame AND 8) * 2
+	spriteOff = 0'(gameFrame AND 4) / 4
+	spritePattOff = 0'(gameFrame AND 8) * 2
 
-	SPRITE 0, spriteY, spriteX, spriteOff, color
-	SPRITE 1, spriteY + 16, spriteX, spriteOff + 8, color
-	SPRITE 2, spriteY, spriteX + 16, spriteOff + 4, color
-	SPRITE 3, spriteY + 16, spriteX + 16, spriteOff + 12, color
+	SPRITE 0, spriteY - spriteOff, spriteX - spriteOff, spritePattOff, color
+	SPRITE 1, spriteY + 16 + spriteOff, spriteX - spriteOff, spritePattOff + 8, color
+	SPRITE 2, spriteY - spriteOff, spriteX + 16 + spriteOff, spritePattOff + 4, color
+	SPRITE 3, spriteY + 16 + spriteOff, spriteX + 16 + spriteOff, spritePattOff + 12, color
 
 	END
 

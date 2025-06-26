@@ -75,8 +75,8 @@ cvbasic --ti994a retropipe.bas asm\%BASENAME%.a99 %LIBPATH%
 if %errorlevel% neq 0 exit /b %errorlevel%
 python3.13 c:\tools\xdt99\xas99.py -b -R asm/%BASENAME%.a99
 if %errorlevel% neq 0 exit /b %errorlevel%
-REM linkticart.py %BASENAME%_b00.bin ..\%BASENAME%_8.bin "RetroPIPE %FRIENDLYVER%"
-linkticart.py %BASENAME%.bin ..\%BASENAME%_8.bin "RetroPIPE %FRIENDLYVER%"
+REM linkticart.py %BASENAME%_b00.bin ..\%BASENAME%_8.bin "RETROPIPE"    :: banking
+linkticart.py %BASENAME%.bin ..\%BASENAME%_8.bin "RETROPIPE"
 echo Output: build\%BASENAME%_8.bin
 
 :: ColecoVision
