@@ -240,13 +240,12 @@ pipeGame: PROCEDURE
 		ELSEIF gameSeconds = GAME_START_DELAY_SECONDS THEN
 			gameState = GAME_STATE_FLOWING
 		ELSEIF gameState = GAME_STATE_FAILED THEN
-			'FOR I = 0 TO CHUTE_SIZE - 1
-		'		chute(I) = CELL_CLEAR
-		'	NEXT I
-			IF gameSeconds < 2 THEN chuteOffset = chuteOffset - 1
-			GOSUB renderChute
-
-			IF gameSeconds = 3 THEN EXIT WHILE
+			IF gameSeconds < 1 THEN
+				chuteOffset = chuteOffset - 1
+				GOSUB renderChute
+			ELSEIF gameSeconds = 3 THEN
+				EXIT WHILE
+			END IF
 		END IF
 '		VDP_REG(7) = defaultReg($f6)    ' red
 		GOSUB uiTick
@@ -270,16 +269,27 @@ logoTick: PROCEDURE
 	logoStart = (gameFrame AND 3) * 3 + 12
 
 	FOR I = logoStart TO logoStart + 2
-		DEFINE COLOR I, 1, VARPTR logoColorWhiteGreen(sin(logoOffset - I))
+		DEFINE VRAM #VDP_COLOR_TAB1 + I * 8, 8, VARPTR logoColorWhiteGreen(sin(logoOffset - I))
 	NEXT I
 	END
 
+subTileForFlow0:
+	DATA BYTE SUBTILE_ML, SUBTILE_TC, SUBTILE_MR, SUBTILE_BC
+subTileForFlow1:
+	DATA BYTE SUBTILE_MR, SUBTILE_BC, SUBTILE_ML, SUBTILE_TC
+offsetForFlow2:
+	DATA BYTE 1, PLAYFIELD_WIDTH, -1, -PLAYFIELD_WIDTH
 
 flowTick: PROCEDURE
 '	VDP_DISABLE_INT
-	'IF (gameFrame AND 1) = 0 THEN RETURN
+	IF (gameFrame AND 1) <> 0 THEN RETURN
 
+startFlow:
 	animTile = currentAnimStep / 8
+	
+	IF animTile = 4 THEN	' next tile?
+	END IF
+
 	animSubStep = currentAnimStep AND $07
 	currentAnimStep = currentAnimStep + 1
 
@@ -287,48 +297,20 @@ flowTick: PROCEDURE
 	skipAnim = 0
 	IF animTile = 0 THEN
 		currentFlowDir = (currentAnim / 16) AND 7
-
-		' TI-99, this needs to be the expression. can't use currentFlowDir????
-		SELECT CASE (currentAnim / 16) AND 7
-			CASE FLOW_RIGHT
-				currentSubTile = SUBTILE_ML
-			CASE FLOW_DOWN
-				currentSubTile = SUBTILE_TC
-			CASE FLOW_LEFT
-				currentSubTile = SUBTILE_MR
-			CASE FLOW_UP
-				currentSubTile = SUBTILE_BC
-			CASE ELSE
-				gameState = GAME_STATE_FAILED
-				gameSeconds = 0
-		END SELECT
-
+		IF currentFlowDir < 4 THEN
+			currentSubTile = subTileForFlow0(currentFlowDir)
+		ELSE
+			gameState = GAME_STATE_FAILED
+			gameSeconds = 0 
+		END IF
 	ELSEIF animTile = 1 THEN
 		currentSubTile = SUBTILE_MC
 		IF currentAnim AND $80 THEN skipAnim = 1
 	ELSEIF animTile = 2 THEN
 		currentFlowDir = currentAnim AND 3
-		SELECT CASE currentFlowDir
-			CASE FLOW_RIGHT
-				currentSubTile = SUBTILE_MR
-			CASE FLOW_DOWN
-				currentSubTile = SUBTILE_BC
-			CASE FLOW_LEFT
-				currentSubTile = SUBTILE_ML
-			CASE FLOW_UP
-				currentSubTile = SUBTILE_TC
-		END SELECT
+		currentSubTile = subTileForFlow1(currentFlowDir)
 	ELSE
-		SELECT CASE currentFlowDir
-			CASE FLOW_RIGHT
-				currentIndex = currentIndex + 1
-			CASE FLOW_DOWN
-				currentIndex = currentIndex + PLAYFIELD_WIDTH
-			CASE FLOW_LEFT
-				currentIndex = currentIndex - 1
-			CASE FLOW_UP
-				currentIndex = currentIndex - PLAYFIELD_WIDTH
-		END SELECT
+		currentIndex = currentIndex + offsetForFlow2(currentFlowDir)
 	
 		animNameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
 		animNameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
@@ -346,6 +328,7 @@ flowTick: PROCEDURE
 			GOSUB updateScore
 		END IF
 		currentAnim = anims(tileId * 4 + (currentAnim AND 3))
+		GOTO startFlow
 	END IF
 
 	currentIndexPattId = (VPEEK(#currentIndexAddr + currentSubTile) - 158) * 8
@@ -353,71 +336,15 @@ flowTick: PROCEDURE
 	IF skipAnim AND (currentSubTile = SUBTILE_MC) THEN
 		' do nothing
 	ELSEIF currentSubTile = SUBTILE_MC AND ((currentAnim XOR (currentAnim / 16)) AND 3) THEN
-		offset = animSubStep * 8
-		IF currentAnim = ANIM_FLOW_RIGHT_UP THEN
-			FOR I = 0 TO 7
-				flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset + I))
-			NEXT I
-		ELSEIF currentAnim = ANIM_FLOW_RIGHT_DOWN THEN
-			offset = offset + 7
-			FOR I = 0 TO 7
-				flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset - I))
-			NEXT I
-		ELSEIF currentAnim = ANIM_FLOW_DOWN_LEFT THEN
-			FOR I = 0 TO 7
-				flowAnimBuffer(I) = cornerFlowDownLeft(offset + I)
-			NEXT I
-		ELSEIF currentAnim = ANIM_FLOW_DOWN_RIGHT THEN
-			FOR I = 0 TO 7
-				flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset + I))
-			NEXT I
-		ELSEIF currentAnim = ANIM_FLOW_LEFT_UP THEN
-			FOR I = 0 TO 7
-				flowAnimBuffer(I) = cornerFlowLeftUp(offset + I)
-			NEXT I
-		ELSEIF currentAnim = ANIM_FLOW_LEFT_DOWN THEN
-			offset = offset + 7
-			FOR I = 0 TO 7
-				flowAnimBuffer(I) = cornerFlowLeftUp(offset - I)
-			NEXT I
-		ELSEIF currentAnim = ANIM_FLOW_UP_LEFT THEN
-			offset = offset + 7
-			FOR I = 0 TO 7
-				flowAnimBuffer(I) = cornerFlowDownLeft(offset - I)
-			NEXT I
-		ELSEIF currentAnim = ANIM_FLOW_UP_RIGHT THEN
-			offset = offset + 7
-			FOR I = 0 TO 7
-				flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset - I))
-			NEXT I
-		END IF
+		GOSUB flowSpriteCorner
 	ELSE
-		IF currentFlowDir = FLOW_LEFT THEN
-			flowAnimTemp = (flowAnimTemp * 2) OR $01
-			FOR I = 0 TO 7
-				' NABU: For some reason  flowAnimTemp AND NOT pipes(currentIndexPattId + I))
-				'       doesn't work. results in $ff
-				flowAnimBuffer(I) = (NOT pipes(currentIndexPattId + I)) AND flowAnimTemp
-			NEXT I
-		ELSEIF currentFlowDir = FLOW_RIGHT THEN
-			flowAnimTemp = (flowAnimTemp / 2) OR $80
-			FOR I = 0 TO 7
-				flowAnimBuffer(I) = NOT pipes(currentIndexPattId + I) AND flowAnimTemp
-			NEXT I
-		ELSEIF currentFlowDir = FLOW_UP THEN
-			flowAnimBuffer(7 - animSubStep) = NOT pipes(currentIndexPattId + 7 - animSubStep)
-		ELSEIF currentFlowDir = FLOW_DOWN THEN
-			flowAnimBuffer(animSubStep) = NOT pipes(currentIndexPattId + animSubStep)
-		END IF
+		GOSUB flowSpriteStraight
 	END IF
-
-	animSprX = (animNameX + (currentSubTile AND 3)) * 8
-	animSprY = (animNameY + (currentSubTile / 32)) * 8
 
 	IF animSubStep = 7 AND skipAnim = 0 THEN
 		IF currentAnimStep > 0 THEN
-			c = VPEEK(#currentIndexAddr + currentSubTile)
-			VPOKE #currentIndexAddr + currentSubTile, c + 10
+			I = VPEEK(#currentIndexAddr + currentSubTile)
+			VPOKE #currentIndexAddr + currentSubTile, I+ 10
 		END IF
 
 		flowAnimTemp = 0
@@ -428,13 +355,77 @@ flowTick: PROCEDURE
 		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
 		SPRITE 4, animSprY - 1, animSprX, 32, 0
 	ELSEIF gameState <> GAME_STATE_FAILED THEN
-		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
+		animSprX = (animNameX + (currentSubTile AND 3)) * 8
+		animSprY = (animNameY + (currentSubTile / 32)) * 8
 
+		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
 		SPRITE 4, animSprY - 1, animSprX, 32, $2
 	END IF
 
 	'VDP_ENABLE_INT
 	END
+
+flowSpriteStraight: PROCEDURE
+	IF currentFlowDir = FLOW_LEFT THEN
+		flowAnimTemp = (flowAnimTemp * 2) OR $01
+		FOR I = 0 TO 7
+			' NABU: For some reason  flowAnimTemp AND NOT pipes(currentIndexPattId + I))
+			'       doesn't work. results in $ff
+			flowAnimBuffer(I) = (NOT pipes(currentIndexPattId + I)) AND flowAnimTemp
+		NEXT I
+	ELSEIF currentFlowDir = FLOW_RIGHT THEN
+		flowAnimTemp = (flowAnimTemp / 2) OR $80
+		FOR I = 0 TO 7
+			flowAnimBuffer(I) = NOT pipes(currentIndexPattId + I) AND flowAnimTemp
+		NEXT I
+	ELSEIF currentFlowDir = FLOW_UP THEN
+		flowAnimBuffer(7 - animSubStep) = NOT pipes(currentIndexPattId + 7 - animSubStep)
+	ELSEIF currentFlowDir = FLOW_DOWN THEN
+		flowAnimBuffer(animSubStep) = NOT pipes(currentIndexPattId + animSubStep)
+	END IF
+	END	
+
+flowSpriteCorner: PROCEDURE
+	offset = animSubStep * 8
+	IF currentAnim = ANIM_FLOW_RIGHT_UP THEN
+		FOR I = 0 TO 7
+			flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset + I))
+		NEXT I
+	ELSEIF currentAnim = ANIM_FLOW_RIGHT_DOWN THEN
+		offset = offset + 7
+		FOR I = 0 TO 7
+			flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset - I))
+		NEXT I
+	ELSEIF currentAnim = ANIM_FLOW_DOWN_LEFT THEN
+		FOR I = 0 TO 7
+			flowAnimBuffer(I) = cornerFlowDownLeft(offset + I)
+		NEXT I
+	ELSEIF currentAnim = ANIM_FLOW_DOWN_RIGHT THEN
+		FOR I = 0 TO 7
+			flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset + I))
+		NEXT I
+	ELSEIF currentAnim = ANIM_FLOW_LEFT_UP THEN
+		FOR I = 0 TO 7
+			flowAnimBuffer(I) = cornerFlowLeftUp(offset + I)
+		NEXT I
+	ELSEIF currentAnim = ANIM_FLOW_LEFT_DOWN THEN
+		offset = offset + 7
+		FOR I = 0 TO 7
+			flowAnimBuffer(I) = cornerFlowLeftUp(offset - I)
+		NEXT I
+	ELSEIF currentAnim = ANIM_FLOW_UP_LEFT THEN
+		offset = offset + 7
+		FOR I = 0 TO 7
+			flowAnimBuffer(I) = cornerFlowDownLeft(offset - I)
+		NEXT I
+	ELSEIF currentAnim = ANIM_FLOW_UP_RIGHT THEN
+		offset = offset + 7
+		FOR I = 0 TO 7
+			flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset - I))
+		NEXT I
+	END IF
+	END
+
 
 
 uiTick: PROCEDURE
@@ -469,12 +460,12 @@ uiTick: PROCEDURE
 		GOSUB updateCursorPos
 	ELSE
 		delayFrames = 0
-		FOR I = 0 TO cursorY + cursorX
+		FOR I = 0 TO (cursorY + cursorX) AND 3
 			r = RANDOM(255)
 		NEXT I
 	END IF
 
-	IF gameState <> GAME_STATE_FAILED AND chuteOffset > 0 THEN
+	IF gameState <> GAME_STATE_FAILED AND chuteOffset <> 0 THEN
 		chuteOffset = chuteOffset - 1
 		GOSUB renderChute
 	END IF
@@ -550,6 +541,17 @@ updateCursorPos: PROCEDURE
 	cursorIndex = cursorY * PLAYFIELD_WIDTH + cursorX
 	END
 
+renderCell: PROCEDURE
+	index = g_type * 9
+
+	FOR J = 0 TO 2
+		IF nameY > 23 THEN RETURN
+		IF nameY >= PLAYFIELD_Y THEN DEFINE VRAM NAME_TAB_XY(nameX, nameY), 3, VARPTR cellNames(index)
+		index = index + 3
+		nameY = nameY + 1
+	NEXT J
+	END
+
 setCursor: PROCEDURE
 	color = 15
 	
@@ -562,17 +564,6 @@ setCursor: PROCEDURE
 	SPRITE 2, spriteY, spriteX + 16, 4, color
 	SPRITE 3, spriteY + 16, spriteX + 16, 12, color
 
-	END
-
-renderCell: PROCEDURE
-	index = g_type * 9
-
-	FOR J = 0 TO 2
-		IF nameY > 23 THEN RETURN
-		IF nameY >= PLAYFIELD_Y THEN DEFINE VRAM NAME_TAB_XY(nameX, nameY), 3, VARPTR cellNames(index)
-		index = index + 3
-		nameY = nameY + 1
-	NEXT J
 	END
 
 
