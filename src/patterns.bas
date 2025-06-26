@@ -118,9 +118,11 @@ logoColorWhiteGreen:
 
 selSprites:
     DATA BYTE $ff, $ff, $c0, $c0, $c0, $c0, $c0, $c0     ' select TL
-    DATA BYTE $c0, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $c0, $00, $00, $00, $00, $00, $00, $00 
+emptyTile:    ' this is part of selSprites, but used for 16 empty bytes
     DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00
+
     DATA BYTE $7f, $7f, $01, $01, $01, $01, $01, $01     ' select TR
     DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
     DATA BYTE $80, $80, $80, $80, $80, $80, $80, $80     

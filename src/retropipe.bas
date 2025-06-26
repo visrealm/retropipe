@@ -110,6 +110,8 @@ DIM currentIndexPattId
 DIM flowAnimTemp
 DIM flowAnimBuffer(8)
 
+DIM savedNav
+
 sin:
 	DATA BYTE 1,1,2,3,4,5,6,6,7,7,6,6,5,4,3,2,1,1,2,3,4,5,6,6,7,7,6,6,5,4,3,2
 
@@ -164,6 +166,10 @@ main:
 	NEXT I
 
 	DEFINE SPRITE 0, 8, selSprites
+
+	' clear dynamic flow sprite patterns
+	DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 16, emptyTile
+	DEFINE VRAM #VDP_SPRITE_PATT + 34 * 8, 16, emptyTile
 
 	WHILE 1
 		GOSUB pipeGame
@@ -328,47 +334,44 @@ flowTick: PROCEDURE
 		animSprY = (nameY + (currentSubTile / 32)) * 8
 
 		IF skipAnim AND (currentSubTile = SUBTILE_MC) THEN
-
+			' do nothing
 		ELSEIF currentSubTile = SUBTILE_MC AND ((currentAnim XOR (currentAnim / 16)) AND 3) THEN
+			offset = animSubStep * 8
 			IF currentAnim = ANIM_FLOW_RIGHT_UP THEN
-				offset = animSubStep * 8
 				FOR I = 0 TO 7
 					flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset + I))
 				NEXT I
 			ELSEIF currentAnim = ANIM_FLOW_RIGHT_DOWN THEN
-				offset = animSubStep * 8
+				offset = offset + 7
 				FOR I = 0 TO 7
-					flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset + 7 - I))
+					flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset - I))
 				NEXT I
 			ELSEIF currentAnim = ANIM_FLOW_DOWN_LEFT THEN
-				offset = animSubStep * 8
 				FOR I = 0 TO 7
 					flowAnimBuffer(I) = cornerFlowDownLeft(offset + I)
 				NEXT I
 			ELSEIF currentAnim = ANIM_FLOW_DOWN_RIGHT THEN
-				offset = animSubStep * 8
 				FOR I = 0 TO 7
 					flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset + I))
 				NEXT I
 			ELSEIF currentAnim = ANIM_FLOW_LEFT_UP THEN
-				offset = animSubStep * 8
 				FOR I = 0 TO 7
 					flowAnimBuffer(I) = cornerFlowLeftUp(offset + I)
 				NEXT I
 			ELSEIF currentAnim = ANIM_FLOW_LEFT_DOWN THEN
-				offset = animSubStep * 8
+				offset = offset + 7
 				FOR I = 0 TO 7
-					flowAnimBuffer(I) = cornerFlowLeftUp(offset + 7 - I)
+					flowAnimBuffer(I) = cornerFlowLeftUp(offset - I)
 				NEXT I
 			ELSEIF currentAnim = ANIM_FLOW_UP_LEFT THEN
-				offset = animSubStep * 8
+				offset = offset + 7
 				FOR I = 0 TO 7
-					flowAnimBuffer(I) = cornerFlowDownLeft(offset + 7 - I)
+					flowAnimBuffer(I) = cornerFlowDownLeft(offset - I)
 				NEXT I
 			ELSEIF currentAnim = ANIM_FLOW_UP_RIGHT THEN
-				offset = animSubStep * 8
+				offset = offset + 7
 				FOR I = 0 TO 7
-					flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset + 7 - I))
+					flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset - I))
 				NEXT I
 			END IF
 		ELSE
@@ -414,7 +417,7 @@ flowTick: PROCEDURE
 
 uiTick: PROCEDURE
 	GOSUB updateNavInput
-
+	savedNav = savedNav OR g_nav
 	IF g_nav > 0 AND delayFrames > 0 THEN
 		delayFrames = delayFrames - 1
 		r = RANDOM(255)
@@ -422,6 +425,7 @@ uiTick: PROCEDURE
 	END IF
 
 	'VDP_DISABLE_INT
+	SOUND 0,,0
 
 	delayFrames = 8
 	IF NAV(NAV_RIGHT) AND cursorX < (PLAYFIELD_WIDTH - 1) THEN
@@ -444,7 +448,7 @@ uiTick: PROCEDURE
 		NEXT I
 	END IF
 
-	IF gameState = GAME_STATE_BUILDING AND chuteOffset > 0 THEN
+	IF gameState <> GAME_STATE_FAILED AND chuteOffset > 0 THEN
 		chuteOffset = chuteOffset - 1
 		GOSUB renderChute
 	END IF
@@ -483,6 +487,9 @@ placeTile: PROCEDURE
 	GOSUB renderChuteCell 
 	chuteOffset = 4
 	GOSUB updateScore
+
+	SOUND 0, 254, 15
+
 	END
 
 renderChute: PROCEDURE
