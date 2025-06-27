@@ -88,6 +88,19 @@ borders:  ' edges and such (178)
     DATA BYTE $01, $01, $01, $01, $01, $01, $01, $01    ' map L
     DATA BYTE $00, $00, $00, $00, $00, $00, $00, $FF    ' map T
 
+digits:
+    DATA BYTE $7C, $CE, $DE, $F6, $E6, $C6, $7C, $00 ' 0
+    DATA BYTE $18, $38, $18, $18, $18, $18, $7E, $00 ' 1
+    DATA BYTE $7C, $C6, $06, $7C, $C0, $C0, $FE, $00 ' 2
+    DATA BYTE $FC, $06, $06, $3C, $06, $06, $FC, $00 ' 3
+    DATA BYTE $0C, $CC, $CC, $CC, $FE, $0C, $0C, $00 ' 4
+    DATA BYTE $FE, $C0, $FC, $06, $06, $C6, $7C, $00 ' 5
+    DATA BYTE $7C, $C0, $C0, $FC, $C6, $C6, $7C, $00 ' 6
+    DATA BYTE $FE, $06, $06, $0C, $18, $30, $30, $00 ' 7
+    DATA BYTE $7C, $C6, $C6, $7C, $C6, $C6, $7C, $00 ' 8
+    DATA BYTE $7C, $C6, $C6, $7E, $06, $06, $7C, $00 ' 9
+    DATA BYTE $7C, $CE, $DE, $F6, $E6, $C6, $7C, $00 ' 0
+
 ' TILE COLORS
 
 gridColor:
@@ -116,7 +129,7 @@ logoColorWhiteGreen:
 
 ' SPRITE PATTERNS
 
-selSprites:
+cursorSprites:
     DATA BYTE $ff, $ff, $c0, $c0, $c0, $c0, $c0, $c0     ' select TL
     DATA BYTE $c0, $00, $00, $00, $00, $00, $00, $00 
 emptyTile:    ' this is part of selSprites, but used for 16 empty bytes
@@ -136,23 +149,7 @@ emptyTile:    ' this is part of selSprites, but used for 16 empty bytes
     DATA BYTE $00, $80, $80, $80, $80, $80, $80, $80     
     DATA BYTE $80, $00, $00, $00, $00, $00, $00, $00     
 
-    DATA BYTE $AA, $00, $80, $00, $80, $00, $80, $00     ' select TL
-    DATA BYTE $80, $00, $80, $00, $80, $00, $80, $00     
-    DATA BYTE $AA, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $AA, $00, $00, $00, $00, $00, $00, $00     ' select TR
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $80, $00, $80, $00, $80, $00, $80, $00     
-    DATA BYTE $80, $00, $80, $00, $80, $00, $80, $00     
-    DATA BYTE $80, $00, $80, $00, $80, $00, $80, $00     ' select BL
-    DATA BYTE $AA, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $AA, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     ' select BR
-    DATA BYTE $AA, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $80, $00, $80, $00, $80, $00, $80, $00     
-    DATA BYTE $80, $00, $00, $00, $00, $00, $00, $00     
-
+' corner flow animation patterns - 7 steps for each
 cornerFlowLeftUp:
     DATA BYTE $01, $01, $01, $01, $01, $01, $03, $00
     DATA BYTE $01, $01, $01, $03, $03, $07, $0F, $00
@@ -171,6 +168,7 @@ cornerFlowDownLeft:
     DATA BYTE $FE, $7E, $3E, $1E, $3E, $3C, $38, $00
     DATA BYTE $FE, $FE, $7E, $3E, $3E, $7C, $78, $00
 
+' a reversed bits lookup table
 reverseBits:
     DATA BYTE $00, $80, $40, $C0, $20, $A0, $60, $E0, $10, $90, $50, $D0, $30, $B0, $70, $F0
     DATA BYTE $08, $88, $48, $C8, $28, $A8, $68, $E8, $18, $98, $58, $D8, $38, $B8, $78, $F8
@@ -190,7 +188,6 @@ reverseBits:
     DATA BYTE $0F, $8F, $4F, $CF, $2F, $AF, $6F, $EF, $1F, $9F, $5F, $DF, $3F, $BF, $7F, $FF
 
 ' NAME TABLE MAPS
-
 
 logoNamesTop:
     DATA BYTE $00, $01, $02, $03, $04, $05, $06, $07, $08, $00, $09, $0A

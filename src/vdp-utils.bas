@@ -13,9 +13,7 @@
 ' VDP constants
 CONST #VDP_NAME_TAB      = $1800
 CONST #VDP_SPRITE_ATTR   = $1B00
-CONST #VDP_FIRMWARE_DATA = $1D00
 CONST #VDP_SPRITE_PATT   = $3800
-
 
 CONST #VDP_PATT_TAB1     = $0000
 CONST #VDP_PATT_TAB2     = #VDP_PATT_TAB1 + $0800
@@ -24,6 +22,9 @@ CONST #VDP_PATT_TAB3     = #VDP_PATT_TAB2 + $0800
 CONST #VDP_COLOR_TAB1    = $2000
 CONST #VDP_COLOR_TAB2    = #VDP_COLOR_TAB1 + $0800
 CONST #VDP_COLOR_TAB3    = #VDP_COLOR_TAB2 + $0800
+
+CONST #VDP_FREE_START    = $1B80
+CONST #VDP_FREE_END      = $1FFF
 
 
 #if TMS9918_TESTING
@@ -59,12 +60,14 @@ vdpDetect: PROCEDURE
     DEFINE VRAM $3F00, 6, vdpGpuDetect
     VDP_REG($36) = $3F                       ' set gpu start address msb
     VDP_REG($37) = $00                       ' set gpu start address lsb (triggers)
-    isF18ACompatible = VPEEK($3F00) = 0  ' check result
+    isF18ACompatible = VPEEK($3F00) = 0      ' check result
     isV9938 = FALSE
     IF isF18ACompatible = FALSE THEN
         VDP_STATUS_REG = 4
         isV9938 = ((VDP_STATUS AND $fe) = $fe)
         VDP_STATUS_REG0
+    END IF
+    IF isV9938 THEN ' avoid warning
     END IF
     END
     

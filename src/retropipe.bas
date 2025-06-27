@@ -1,8 +1,8 @@
-GOTO main
 
-include "vdp-utils.bas"
-include "input.bas"
 
+' ==========================================
+' CONSTANTS
+' ------------------------------------------
 CONST PLAYFIELD_X = 5
 CONST PLAYFIELD_Y = 3
 CONST PLAYFIELD_WIDTH = 9
@@ -28,9 +28,6 @@ CONST CELL_CLEAR     = 19
 CONST CELL_LOCKED_FLAG = $80
 CONST CELL_TILE_MASK   = $0f
 
-' tile definition
-' appearance
-' paths
 CONST PIPE_LEFT   = 0
 CONST PIPE_TOP    = 1
 CONST PIPE_RIGHT  = 2
@@ -73,25 +70,18 @@ CONST GAME_STATE_BUILDING = 0
 CONST GAME_STATE_FLOWING  = 1
 CONST GAME_STATE_FAILED   = 2
 
-CONST GAME_START_DELAY_SECONDS = 5
+CONST GAME_START_DELAY_SECONDS = 10
 
 CONST POINTS_BUILD   		= 100
 CONST POINTS_REPLACE_DEDUCT = 50
 CONST POINTS_FLOW_TILE      = 100
 
+CONST FALSE = 0
+CONST TRUE  = -1
 
-anims:
-	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
-	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
-	DATA BYTE ANIM_FLOW_RIGHT,      ANIM_FLOW_INVALID,    ANIM_FLOW_LEFT,      ANIM_FLOW_INVALID
-	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_DOWN,       ANIM_FLOW_INVALID,   ANIM_FLOW_UP
-	DATA BYTE ANIM_FLOW_RIGHT OR ANIM_FLOW_SKIP,      ANIM_FLOW_DOWN,       ANIM_FLOW_LEFT OR ANIM_FLOW_SKIP,      ANIM_FLOW_UP
-	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_LEFT_DOWN, ANIM_FLOW_UP_RIGHT
-	DATA BYTE ANIM_FLOW_RIGHT_DOWN, ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_UP_LEFT
-	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_DOWN_RIGHT, ANIM_FLOW_LEFT_UP,   ANIM_FLOW_INVALID
-	DATA BYTE ANIM_FLOW_RIGHT_UP,   ANIM_FLOW_DOWN_LEFT,  ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
-	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID
-
+' ==========================================
+' GLOBALS
+' ------------------------------------------
 DIM chute(CHUTE_SIZE + 1)
 DIM game(PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT)
 DIM #score
@@ -110,12 +100,30 @@ DIM currentIndexPattId
 
 DIM flowAnimTemp
 DIM flowAnimBuffer(8)
+DIM silentFrame
+
+DIM scoreCurrentOffset(5)
+DIM scoreDesiredOffset(5)
 
 DIM savedNav
 
-sin:
-	DATA BYTE 1,1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1,1,2,3,4,5,6,7,8,8,7,6,5,4,3,2
 
+' ==========================================
+' ENTRY POINT
+' ------------------------------------------
+GOTO main
+
+' ==========================================
+' INCLUDES
+' ------------------------------------------
+include "vdp-utils.bas"
+include "input.bas"
+
+CONST #SCORE_VRAM_ADDR		= #VDP_FREE_START
+
+' ==========================================
+' ACTUAL ENTRY POINT
+' ------------------------------------------
 main:
     ' what are we working with?
 '    GOSUB vdpDetect
@@ -130,12 +138,15 @@ main:
 	VDP_REG(5) = defaultReg(5)
 	VDP_REG(6) = defaultReg(6)
 
+	' font patterns - write to each bank
 	FOR #I = $0100 TO $1100 STEP $0800
         DEFINE VRAM PLETTER #I, $300, font
     NEXT #I
-	
+
+	' title / logo patterns
     DEFINE CHAR 0, 24, logo
 
+	' tile patterns and colors
     DEFINE CHAR 128, 30, grid
     DEFINE COLOR 128, 18, gridColor
 	FOR I = 137 TO 175
@@ -144,8 +155,6 @@ main:
     DEFINE CHAR 158, 10, pipes	' empty pipes
     DEFINE CHAR 168, 10, pipes	' full pipes
 
-    DEFINE CHAR 178, 7, borders
-
 	FOR I = 158 TO 167
 	    DEFINE COLOR I, 1, pipeColor
 	NEXT I
@@ -153,12 +162,29 @@ main:
 	    DEFINE COLOR I, 1, pipeColorGreen
 	NEXT I
 
+	' score patterns (dynamic rolling digits)
+	FOR I = 0 TO 4
+		scoreCurrentOffset(I) = 0
+		DEFINE VRAM #VDP_PATT_TAB1 + (24 + I) * 8, 8, VARPTR digits(0)
+	NEXT I
+
+
+	' gamefield patterns
+    DEFINE CHAR 178, 7, borders
+
+	
+	' set up the name table
+	' ------------------------------
+
 	DEFINE VRAM NAME_TAB_XY(0, 0), 12, logoNamesTop
 	DEFINE VRAM NAME_TAB_XY(0, 1), 12, logoNamesBottom
 
+	' horizontal top border
 	FOR I = 0 TO 31
 		PUT_XY(I, 2), 184
 	NEXT I
+
+	' vertical left chute and border
 	FOR I = PLAYFIELD_Y TO PLAYFIELD_Y + CHUTE_SIZE * 3 - 1
 		DEFINE VRAM NAME_TAB_XY(0, I), 5, chuteNames
 	NEXT I
@@ -166,8 +192,8 @@ main:
 		PUT_XY(4, I), 183
 	NEXT I
 
-	DEFINE SPRITE 0, 8, selSprites
-	'SPRITE 5, $d0, 0, 0, 0
+	' cursor sprites
+	DEFINE SPRITE 0, 4, cursorSprites
 
 	WHILE 1
 		GOSUB pipeGame
@@ -193,7 +219,7 @@ pipeGame: PROCEDURE
 	chute(CHUTE_SIZE) = CELL_CLEAR
 
 	PRINT AT XY(20,0), "LEVEL: 1"
-	PRINT AT XY(20,1), "SCORE: "
+	PRINT AT XY(20,1), "SCORE: \24\25\26\27\28"
 	GOSUB updateScore
 
 	chuteOffset = 20
@@ -225,16 +251,16 @@ pipeGame: PROCEDURE
 
 	gameState = GAME_STATE_BUILDING
 	gameFrame = 0
+	gameSeconds = 0
 
 	VDP_ENABLE_INT
-	gameSeconds = 0
 
 	' main game loop
 	WHILE 1
 		WAIT
-'		VDP_REG(7) = defaultReg($fb)	' green
 
-		'VDP_DISABLE_INT
+		if gameFrame = silentFrame THEN SOUND 3,,0
+
 		IF gameState = GAME_STATE_FLOWING THEN
 			GOSUB flowTick
 		ELSEIF gameSeconds = GAME_START_DELAY_SECONDS THEN
@@ -247,46 +273,88 @@ pipeGame: PROCEDURE
 				EXIT WHILE
 			END IF
 		END IF
-'		VDP_REG(7) = defaultReg($f6)    ' red
+
 		GOSUB uiTick
-'		VDP_REG(7) = defaultReg($fd)	' magenta
 		GOSUB logoTick
-'		VDP_REG(7) = defaultReg($f4)	' blue
+		GOSUB scoreTick
+		
 		gameFrame = gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
 		IF (gameFrame AND $3f) = 0 THEN gameSeconds = gameSeconds + 1
-		'VDP_ENABLE_INT
 	WEND
 	END
 
-logoTick: PROCEDURE
-	CONST LOGO_FRAME_DELAY = 4
+' Handle score animation
+' ------------------------------------------
+scoreTick: PROCEDURE
+	FOR I = 0 TO 4
+		IF scoreCurrentOffset(I) <> scoreDesiredOffset(I) THEN
+			GOSUB rollDigit
+		END IF
+	NEXT I
+	END
 
+rollDigit: PROCEDURE
+	' having trouble with SGN() and ABS() on TMS9900, so here we are
+	IF scoreDesiredOffset(I) > scoreCurrentOffset(I) THEN
+		dist = scoreDesiredOffset(I) - scoreCurrentOffset(I)
+		speed = 1
+	ELSE
+		dist = scoreCurrentOffset(I) - scoreDesiredOffset(I)
+		speed = -1
+	END IF
+
+	IF dist > 40 THEN
+		speed = -speed
+		dist = 80 - dist
+	END IF
+	
+	IF dist > 12 THEN
+		speed = speed * (dist / 4)
+	END IF
+
+	scoreCurrentOffset(I) = scoreCurrentOffset(I) + speed
+
+	IF scoreCurrentOffset(I) > 200 THEN
+		scoreCurrentOffset(I) = 80 + scoreCurrentOffset(I)
+	ELSEIF scoreCurrentOffset(I) > 79 THEN
+		scoreCurrentOffset(I) = scoreCurrentOffset(I) - 80
+	END IF
+
+	DEFINE VRAM #VDP_PATT_TAB1 + (24 + I) * 8, 8, VARPTR digits(scoreCurrentOffset(I))
+	END
+
+
+' Handle title/logo animation
+' ------------------------------------------
+logoTick: PROCEDURE
 	' only move the wave every 4 frames
-	logoOffset = gameFrame / LOGO_FRAME_DELAY
+	logoOffset = gameFrame / 4
 
 	' every frame however, we render a quarter of the new wave
 	logoOffset = (logoOffset AND $f) + 23
 	logoStart = (gameFrame AND 3) * 3 + 12
 
+	' update the color defs of three tiles
 	FOR I = logoStart TO logoStart + 2
-		DEFINE VRAM #VDP_COLOR_TAB1 + I * 8, 8, VARPTR logoColorWhiteGreen(sin(logoOffset - I))
+		DEFINE VRAM #VDP_COLOR_TAB1 + I * 8, 8, VARPTR logoColorWhiteGreen(sine(logoOffset - I))
 	NEXT I
 	END
 
-subTileForFlow0:
-	DATA BYTE SUBTILE_ML, SUBTILE_TC, SUBTILE_MR, SUBTILE_BC
-subTileForFlow1:
-	DATA BYTE SUBTILE_MR, SUBTILE_BC, SUBTILE_ML, SUBTILE_TC
-offsetForFlow2:
-	DATA BYTE 1, PLAYFIELD_WIDTH, -1, -PLAYFIELD_WIDTH
+sine:
+	DATA BYTE 1,1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1,1,2,3,4,5,6,7,8,8,7,6,5,4,3,2
+
+
+' ==========================================
+' Handle liquid flow logic and animations
+' ------------------------------------------
 
 flowTick: PROCEDURE
-'	VDP_DISABLE_INT
-	IF (gameFrame AND 1) <> 0 THEN RETURN
+	IF (gameFrame AND 3) <> 0 THEN RETURN
 
-startFlow:
-	animTile = currentAnimStep / 8
+.startFlow:
 	
+	' skip frames for flow speed
+	animTile = currentAnimStep / 8	
 	IF animTile = 4 THEN	' next tile?
 	END IF
 
@@ -328,7 +396,7 @@ startFlow:
 			GOSUB updateScore
 		END IF
 		currentAnim = anims(tileId * 4 + (currentAnim AND 3))
-		GOTO startFlow
+		GOTO .startFlow
 	END IF
 
 	currentIndexPattId = (VPEEK(#currentIndexAddr + currentSubTile) - 158) * 8
@@ -336,9 +404,9 @@ startFlow:
 	IF skipAnim AND (currentSubTile = SUBTILE_MC) THEN
 		' do nothing
 	ELSEIF currentSubTile = SUBTILE_MC AND ((currentAnim XOR (currentAnim / 16)) AND 3) THEN
-		GOSUB flowSpriteCorner
+		GOSUB .flowSpriteCorner
 	ELSE
-		GOSUB flowSpriteStraight
+		GOSUB .flowSpriteStraight
 	END IF
 
 	IF animSubStep = 7 AND skipAnim = 0 THEN
@@ -362,10 +430,10 @@ startFlow:
 		SPRITE 4, animSprY - 1, animSprX, 32, $2
 	END IF
 
-	'VDP_ENABLE_INT
 	END
 
-flowSpriteStraight: PROCEDURE
+' generate dynamic sprite pattern data for H/V liquid flow
+.flowSpriteStraight: PROCEDURE
 	IF currentFlowDir = FLOW_LEFT THEN
 		flowAnimTemp = (flowAnimTemp * 2) OR $01
 		FOR I = 0 TO 7
@@ -385,7 +453,8 @@ flowSpriteStraight: PROCEDURE
 	END IF
 	END	
 
-flowSpriteCorner: PROCEDURE
+' generate dynamic sprite pattern data for turning liquid flow
+.flowSpriteCorner: PROCEDURE
 	offset = animSubStep * 8
 	IF currentAnim = ANIM_FLOW_RIGHT_UP THEN
 		FOR I = 0 TO 7
@@ -426,20 +495,48 @@ flowSpriteCorner: PROCEDURE
 	END IF
 	END
 
+' which subtile will be next for each stage of animation?
+' entries for liquid coming into left, top, right, bottom edges respectively
+
+subTileForFlow0:	' first stage - entry subtile
+	DATA BYTE SUBTILE_ML, SUBTILE_TC, SUBTILE_MR, SUBTILE_BC
+subTileForFlow1:	' second stage - exit subtile
+	DATA BYTE SUBTILE_MR, SUBTILE_BC, SUBTILE_ML, SUBTILE_TC
+offsetForFlow2:		' third stage - offset to next tile
+	DATA BYTE 1, PLAYFIELD_WIDTH, -1, -PLAYFIELD_WIDTH
+
+' animation ids for liquid hitting the left, top, right and bottom edges of each tile id
+anims:
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID	' null
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID    ' grid
+	DATA BYTE ANIM_FLOW_RIGHT,      ANIM_FLOW_INVALID,    ANIM_FLOW_LEFT,      ANIM_FLOW_INVALID    ' horz
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_DOWN,       ANIM_FLOW_INVALID,   ANIM_FLOW_UP         ' vert
+	DATA BYTE ANIM_FLOW_RIGHT OR ANIM_FLOW_SKIP,      ANIM_FLOW_DOWN,       ANIM_FLOW_LEFT OR ANIM_FLOW_SKIP,      ANIM_FLOW_UP   ' cross
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_LEFT_DOWN, ANIM_FLOW_UP_RIGHT   ' bottom/right corner
+	DATA BYTE ANIM_FLOW_RIGHT_DOWN, ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_UP_LEFT    ' bottom/left corner
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_DOWN_RIGHT, ANIM_FLOW_LEFT_UP,   ANIM_FLOW_INVALID    ' top/right corner
+	DATA BYTE ANIM_FLOW_RIGHT_UP,   ANIM_FLOW_DOWN_LEFT,  ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID    ' top/left corner
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID    ' start
 
 
+' ==========================================
+' Handle user input and UI interaction
+' ------------------------------------------
 uiTick: PROCEDURE
+
+	' get user input
 	GOSUB updateNavInput
 	savedNav = savedNav OR g_nav
+
+	' when a button is pressed, we delay some frames before triggering
+	' it again. unless the user releases all buttons, then we skip the delay
 	IF g_nav > 0 AND delayFrames > 0 THEN
 		delayFrames = delayFrames - 1
-		r = RANDOM(255)
+		J = RANDOM(255)	' help randomize
 		RETURN
 	END IF
 
-	'VDP_DISABLE_INT
-	SOUND 0,,0
-
+	' handle user input
 	delayFrames = 8
 	IF NAV(NAV_OK) AND gameState <> GAME_STATE_FAILED THEN
 		tileId = game(cursorIndex)
@@ -460,25 +557,38 @@ uiTick: PROCEDURE
 		GOSUB updateCursorPos
 	ELSE
 		delayFrames = 0
+
+		' help randomize a bit more
 		FOR I = 0 TO (cursorY + cursorX) AND 3
-			r = RANDOM(255)
+			J = RANDOM(255)
 		NEXT I
 	END IF
 
+	' render the tile chute if it's not settled
 	IF gameState <> GAME_STATE_FAILED AND chuteOffset <> 0 THEN
 		chuteOffset = chuteOffset - 1
 		GOSUB renderChute
 	END IF
 
-	GOSUB setCursor
-
-	'VDP_ENABLE_INT
+	' place and color the cursor
+	GOSUB renderCursor
 	END
 
+' ==========================================
+' Update the score UI
+' ------------------------------------------
 updateScore: PROCEDURE
-	PRINT AT XY(27,1), <5>#score
+	PRINT AT #SCORE_VRAM_ADDR, <5>#score
+	DEFINE VRAM READ #SCORE_VRAM_ADDR, 5, VARPTR scoreDesiredOffset(0)
+	FOR I = 0 TO 4
+		scoreDesiredOffset(I) = (scoreDesiredOffset(I) - 48) * 8
+	NEXT I
 	END
 
+' ==========================================
+' Place a tile - render it to screen
+'   INPUTS: tileId, cursorIndex
+' ------------------------------------------
 placeTile: PROCEDURE
 	tileId = tileId AND CELL_TILE_MASK
 	IF tileId > 0 THEN
@@ -505,10 +615,14 @@ placeTile: PROCEDURE
 	chuteOffset = 4
 	GOSUB updateScore
 
-	SOUND 0, 254, 15
+	SOUND 3, 6, 5
+	silentFrame = gameFrame + 3
 
 	END
 
+' ==========================================
+' Render the entire tile chute
+' ------------------------------------------
 renderChute: PROCEDURE
 	g_cell = CHUTE_SIZE
 	FOR I = 0 TO CHUTE_SIZE
@@ -519,14 +633,6 @@ renderChute: PROCEDURE
 	END
 	
 
-renderGameCell: PROCEDURE
-	nameX = PLAYFIELD_X + (g_cell % PLAYFIELD_WIDTH) * 3
-	nameY = PLAYFIELD_Y + (g_cell / PLAYFIELD_WIDTH) * 3
-
-	GOSUB renderCell
-	END	
-
-
 renderChuteCell: PROCEDURE
 	nameX = CHUTE_X
 	nameY = (CHUTE_Y + (g_cell * 3)) - chuteOffset
@@ -535,13 +641,21 @@ renderChuteCell: PROCEDURE
 	GOSUB renderCell
 	END
 
-updateCursorPos: PROCEDURE
-	spriteX = PLAYFIELD_X * 8 + (cursorX * 24) - 1
-	spriteY = PLAYFIELD_Y * 8 + (cursorY * 24) - 2
-	
-	cursorIndex = cursorY * PLAYFIELD_WIDTH + cursorX
-	END
+' ==========================================
+' Render a game cell (in the playfield)
+'   INPUTS: g_cell, g_type
+' ------------------------------------------
+renderGameCell: PROCEDURE
+	nameX = PLAYFIELD_X + (g_cell % PLAYFIELD_WIDTH) * 3
+	nameY = PLAYFIELD_Y + (g_cell / PLAYFIELD_WIDTH) * 3
 
+	GOSUB renderCell
+	END	
+
+' ==========================================
+' Render a game cell (any location)
+'   INPUTS: g_type, nameX, nameY
+' ------------------------------------------
 renderCell: PROCEDURE
 	index = g_type * 9
 
@@ -556,7 +670,21 @@ renderCell: PROCEDURE
 	NEXT J
 	END
 
-setCursor: PROCEDURE
+' ==========================================
+' Update the cursor position
+'   INPUTS: cursorX, cursorY
+' ------------------------------------------
+updateCursorPos: PROCEDURE
+	spriteX = PLAYFIELD_X * 8 + (cursorX * 24) - 1
+	spriteY = PLAYFIELD_Y * 8 + (cursorY * 24) - 2
+	
+	cursorIndex = cursorY * PLAYFIELD_WIDTH + cursorX
+	END
+
+' ==========================================
+' Render the cursor
+' ------------------------------------------
+renderCursor: PROCEDURE
 	color = 15
 	
 	IF gameFrame AND 8 THEN color = 14
