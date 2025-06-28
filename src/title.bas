@@ -12,7 +12,7 @@ titleScreen: PROCEDURE
 
 	DEFINE VRAM NAME_TAB_XY(0,3), 320, titlePipeNames
 
-    #addr = #VDP_COLOR_TAB2 + 32 * 8
+    #addr = #VDP_COLOR_TAB1 + 32 * 8
     FOR I = 0 to 63
         DEFINE VRAM #addr + I * 8, 8, visealmColor
     NEXT I
@@ -37,7 +37,7 @@ titleScreen: PROCEDURE
         NEXT Y
     NEXT X
 
-    PRINT AT XY(9, 14), "VISREALM  2025"
+    PRINT AT XY(9, 3), "VISREALM  2025"
 
     'PRINT AT XY(9, 19), "BEGIN PLUMBING"
     PRINT AT XY(10, 19), "LET'S PLUMB!"

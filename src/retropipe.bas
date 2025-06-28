@@ -311,8 +311,8 @@ pipeGame: PROCEDURE
 		gameFrame = gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
 		IF (gameFrame AND $3f) = 0 THEN
 			gameSeconds = gameSeconds + 1
-			#score = #score - 100
-			GOSUB updateScore
+			'#score = #score - 100
+			'GOSUB updateScore
 		END IF
 	WEND
 	END
