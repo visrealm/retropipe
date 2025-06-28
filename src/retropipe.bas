@@ -148,6 +148,11 @@ main:
         DEFINE VRAM PLETTER #I, $300, font
     NEXT #I
 
+	FOR I = 32 TO 127
+		DEFINE COLOR I, 1, fontColor
+	NEXT I
+
+
 #if SHOW_TITLE
 	GOSUB titleScreen
 
@@ -155,9 +160,16 @@ main:
         DEFINE VRAM PLETTER #I, $300, font
     NEXT #I
 
-	FOR I = 0 TO 200
+	FOR I = 0 TO 254
 		DEFINE COLOR I, 1, defaultColor
 	NEXT I
+	FOR I = 24 TO 127
+		DEFINE COLOR I, 1, fontColor
+	NEXT I
+	FOR I = 128 TO 254
+		DEFINE COLOR I, 1, defaultColor
+	NEXT I
+
 #endif
 
 	' title / logo patterns
@@ -299,6 +311,8 @@ pipeGame: PROCEDURE
 		gameFrame = gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
 		IF (gameFrame AND $3f) = 0 THEN
 			gameSeconds = gameSeconds + 1
+			#score = #score - 100
+			GOSUB updateScore
 		END IF
 	WEND
 	END
@@ -333,7 +347,7 @@ scoreTick: PROCEDURE
 
 	scoreCurrentOffset(I) = scoreCurrentOffset(I) + speed
 
-	IF scoreCurrentOffset(I) > 200 THEN
+	IF scoreCurrentOffset(I) < 0 THEN
 		scoreCurrentOffset(I) = 80 + scoreCurrentOffset(I)
 	ELSEIF scoreCurrentOffset(I) > 79 THEN
 		scoreCurrentOffset(I) = scoreCurrentOffset(I) - 80

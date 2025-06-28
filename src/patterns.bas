@@ -128,6 +128,8 @@ pipeColor:
 pipeColorGreen:
     DATA BYTE $42, $42, $42, $42, $42, $42, $42, $42
 
+fontColor:
+    DATA BYTE $f0, $f0, $f0, $f0, $f0, $f0, $f0, $00
 defaultColor:
 titleLogoColorWhiteGreen:
     DATA BYTE $f0, $f0, $f0, $f0, $f0, $f0, $f0, $f0
