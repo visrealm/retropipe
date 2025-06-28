@@ -1,4 +1,6 @@
 
+CONST SHOW_TITLE = 1
+
 
 ' ==========================================
 ' CONSTANTS
@@ -105,6 +107,8 @@ DIM silentFrame
 DIM scoreCurrentOffset(5)
 DIM scoreDesiredOffset(5)
 
+SIGNED scoreCurrentOffset, scoreDesiredOffset
+
 DIM savedNav
 
 
@@ -127,7 +131,6 @@ CONST #SCORE_VRAM_ADDR		= #VDP_FREE_START
 main:
     ' what are we working with?
 '    GOSUB vdpDetect
-
 	VDP_REG(50) = $80  ' reset VDP registers to boot values
 	VDP_REG(7) = defaultReg(7)
 	VDP_REG(0) = defaultReg(0)  ' VDP_REG() doesn't accept variables, so...
@@ -138,10 +141,24 @@ main:
 	VDP_REG(5) = defaultReg(5)
 	VDP_REG(6) = defaultReg(6)
 
+	SPRITE FLICKER OFF
+
 	' font patterns - write to each bank
 	FOR #I = $0100 TO $1100 STEP $0800
         DEFINE VRAM PLETTER #I, $300, font
     NEXT #I
+
+#if SHOW_TITLE
+	GOSUB titleScreen
+
+	FOR #I = $0100 TO $1100 STEP $0800
+        DEFINE VRAM PLETTER #I, $300, font
+    NEXT #I
+
+	FOR I = 0 TO 200
+		DEFINE COLOR I, 1, defaultColor
+	NEXT I
+#endif
 
 	' title / logo patterns
     DEFINE CHAR 0, 24, logo
@@ -166,6 +183,7 @@ main:
 	FOR I = 0 TO 4
 		scoreCurrentOffset(I) = 0
 		DEFINE VRAM #VDP_PATT_TAB1 + (24 + I) * 8, 8, VARPTR digits(0)
+		'DEFINE COLOR 24 + I, 1, digitColor
 	NEXT I
 
 
@@ -279,36 +297,37 @@ pipeGame: PROCEDURE
 		GOSUB scoreTick
 		
 		gameFrame = gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
-		IF (gameFrame AND $3f) = 0 THEN gameSeconds = gameSeconds + 1
+		IF (gameFrame AND $3f) = 0 THEN
+			gameSeconds = gameSeconds + 1
+		END IF
 	WEND
 	END
 
+' ==========================================
 ' Handle score animation
 ' ------------------------------------------
 scoreTick: PROCEDURE
 	FOR I = 0 TO 4
 		IF scoreCurrentOffset(I) <> scoreDesiredOffset(I) THEN
-			GOSUB rollDigit
+			GOSUB .rollDigit
 		END IF
 	NEXT I
 	END
 
-rollDigit: PROCEDURE
-	' having trouble with SGN() and ABS() on TMS9900, so here we are
-	IF scoreDesiredOffset(I) > scoreCurrentOffset(I) THEN
-		dist = scoreDesiredOffset(I) - scoreCurrentOffset(I)
-		speed = 1
-	ELSE
-		dist = scoreCurrentOffset(I) - scoreDesiredOffset(I)
-		speed = -1
-	END IF
+.rollDigit: PROCEDURE
+	' which way are we going and how far?
+	#diff = scoreDesiredOffset(I) - scoreCurrentOffset(I)
+	dist = ABS(#diff)
+	speed = SGN(#diff)
 
-	IF dist > 40 THEN
+	' is it closer to go the opposite direction?
+	IF dist > 5 * 8 THEN
 		speed = -speed
-		dist = 80 - dist
+		dist = 10 * 8 - dist
 	END IF
 	
-	IF dist > 12 THEN
+	' let's go faster if we're further away
+	IF dist > 8 THEN
 		speed = speed * (dist / 4)
 	END IF
 
@@ -324,6 +343,24 @@ rollDigit: PROCEDURE
 	END
 
 
+' Update the score data
+' ------------------------------------------
+updateScore: PROCEDURE
+
+	' print score to off-screen buffer (could be faster to just process manually)
+	PRINT AT #SCORE_VRAM_ADDR, <5>#score
+
+	' copy from vram to ram
+	DEFINE VRAM READ #SCORE_VRAM_ADDR, 5, VARPTR scoreDesiredOffset(0)
+
+	' offset to pattern index
+	FOR I = 0 TO 4
+		scoreDesiredOffset(I) = (scoreDesiredOffset(I) - 48) * 8
+	NEXT I
+	END
+
+
+' ==========================================
 ' Handle title/logo animation
 ' ------------------------------------------
 logoTick: PROCEDURE
@@ -575,17 +612,6 @@ uiTick: PROCEDURE
 	END
 
 ' ==========================================
-' Update the score UI
-' ------------------------------------------
-updateScore: PROCEDURE
-	PRINT AT #SCORE_VRAM_ADDR, <5>#score
-	DEFINE VRAM READ #SCORE_VRAM_ADDR, 5, VARPTR scoreDesiredOffset(0)
-	FOR I = 0 TO 4
-		scoreDesiredOffset(I) = (scoreDesiredOffset(I) - 48) * 8
-	NEXT I
-	END
-
-' ==========================================
 ' Place a tile - render it to screen
 '   INPUTS: tileId, cursorIndex
 ' ------------------------------------------
@@ -698,6 +724,10 @@ renderCursor: PROCEDURE
 
 	END
 
+#if SHOW_TITLE
+include "title.bas"
+#endif
 
 include "font.bas"
 include "patterns.bas"
+

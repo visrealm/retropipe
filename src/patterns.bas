@@ -79,6 +79,8 @@ logo: ' RetroPIPE logo (0)
     DATA BYTE $E7, $87, $07, $07, $07, $03, $03, $00     
     DATA BYTE $FC, $FC, $80, $80, $FC, $FC, $FC, $FC     
 
+
+
 borders:  ' edges and such (178)
     DATA BYTE $C1, $C1, $C1, $C1, $C1, $C1, $C1, $C1    ' chute R
     DATA BYTE $06, $06, $06, $06, $06, $06, $06, $06    ' chute L
@@ -114,6 +116,9 @@ gridColor:
     DATA BYTE $15, $15, $15, $15, $15, $15, $15, $75
     DATA BYTE $75, $75, $75, $75, $75, $75, $75, $75
 
+'digitColor:
+'    DATA BYTE $31, $31, $31, $31, $31, $31, $31, $31
+
 baseColor:
     DATA BYTE $45, $45, $45, $45, $45, $45, $45, $45
 
@@ -123,9 +128,13 @@ pipeColor:
 pipeColorGreen:
     DATA BYTE $42, $42, $42, $42, $42, $42, $42, $42
 
-logoColorWhiteGreen:
+defaultColor:
+titleLogoColorWhiteGreen:
+    DATA BYTE $f0, $f0, $f0, $f0, $f0, $f0, $f0, $f0
+logoColorWhiteGreen:    
     DATA BYTE $f0, $f0, $f0, $f0, $f0, $f0, $f0, $f0
     DATA BYTE $30, $20, $c0, $c0, $c0, $c0, $c0, $c0
+    DATA BYTE $c0, $c0, $c0, $c0, $c0, $c0, $c0, $c0
 
 ' SPRITE PATTERNS
 
