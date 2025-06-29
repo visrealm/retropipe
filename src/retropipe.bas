@@ -485,65 +485,67 @@ flowTick: PROCEDURE
 
 ' generate dynamic sprite pattern data for H/V liquid flow
 .flowSpriteStraight: PROCEDURE
-	IF currentFlowDir = FLOW_LEFT THEN
-		flowAnimTemp = (flowAnimTemp * 2) OR $01
-		FOR I = 0 TO 7
-			' NABU: For some reason  flowAnimTemp AND NOT pipes(currentIndexPattId + I))
-			'       doesn't work. results in $ff
-			flowAnimBuffer(I) = (NOT pipes(currentIndexPattId + I)) AND flowAnimTemp
-		NEXT I
-	ELSEIF currentFlowDir = FLOW_RIGHT THEN
-		flowAnimTemp = (flowAnimTemp / 2) OR $80
-		FOR I = 0 TO 7
-			flowAnimBuffer(I) = NOT pipes(currentIndexPattId + I) AND flowAnimTemp
-		NEXT I
-	ELSEIF currentFlowDir = FLOW_UP THEN
-		flowAnimBuffer(7 - animSubStep) = NOT pipes(currentIndexPattId + 7 - animSubStep)
-	ELSEIF currentFlowDir = FLOW_DOWN THEN
-		flowAnimBuffer(animSubStep) = NOT pipes(currentIndexPattId + animSubStep)
-	END IF
+	SELECT CASE currentFlowDir
+		CASE FLOW_LEFT
+			flowAnimTemp = (flowAnimTemp * 2) OR $01
+			FOR I = 0 TO 7
+				' NABU: For some reason  flowAnimTemp AND NOT pipes(currentIndexPattId + I))
+				'       doesn't work. results in $ff
+				flowAnimBuffer(I) = (NOT pipes(currentIndexPattId + I)) AND flowAnimTemp
+			NEXT I
+		CASE FLOW_RIGHT
+			flowAnimTemp = (flowAnimTemp / 2) OR $80
+			FOR I = 0 TO 7
+				flowAnimBuffer(I) = NOT pipes(currentIndexPattId + I) AND flowAnimTemp
+			NEXT I
+		CASE FLOW_UP
+			flowAnimBuffer(7 - animSubStep) = NOT pipes(currentIndexPattId + 7 - animSubStep)
+		CASE FLOW_DOWN
+			flowAnimBuffer(animSubStep) = NOT pipes(currentIndexPattId + animSubStep)
+	END SELECT
 	END	
 
 ' generate dynamic sprite pattern data for turning liquid flow
 .flowSpriteCorner: PROCEDURE
 	offset = animSubStep * 8
-	IF currentAnim = ANIM_FLOW_RIGHT_UP THEN
-		FOR I = 0 TO 7
-			flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset + I))
-		NEXT I
-	ELSEIF currentAnim = ANIM_FLOW_RIGHT_DOWN THEN
-		offset = offset + 7
-		FOR I = 0 TO 7
-			flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset - I))
-		NEXT I
-	ELSEIF currentAnim = ANIM_FLOW_DOWN_LEFT THEN
-		FOR I = 0 TO 7
-			flowAnimBuffer(I) = cornerFlowDownLeft(offset + I)
-		NEXT I
-	ELSEIF currentAnim = ANIM_FLOW_DOWN_RIGHT THEN
-		FOR I = 0 TO 7
-			flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset + I))
-		NEXT I
-	ELSEIF currentAnim = ANIM_FLOW_LEFT_UP THEN
-		FOR I = 0 TO 7
-			flowAnimBuffer(I) = cornerFlowLeftUp(offset + I)
-		NEXT I
-	ELSEIF currentAnim = ANIM_FLOW_LEFT_DOWN THEN
-		offset = offset + 7
-		FOR I = 0 TO 7
-			flowAnimBuffer(I) = cornerFlowLeftUp(offset - I)
-		NEXT I
-	ELSEIF currentAnim = ANIM_FLOW_UP_LEFT THEN
-		offset = offset + 7
-		FOR I = 0 TO 7
-			flowAnimBuffer(I) = cornerFlowDownLeft(offset - I)
-		NEXT I
-	ELSEIF currentAnim = ANIM_FLOW_UP_RIGHT THEN
-		offset = offset + 7
-		FOR I = 0 TO 7
-			flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset - I))
-		NEXT I
-	END IF
+	SELECT CASE currentAnim
+		CASE ANIM_FLOW_RIGHT_UP
+			FOR I = 0 TO 7
+				flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset + I))
+			NEXT I
+		CASE ANIM_FLOW_RIGHT_DOWN
+			offset = offset + 7
+			FOR I = 0 TO 7
+				flowAnimBuffer(I) = reverseBits(cornerFlowLeftUp(offset - I))
+			NEXT I
+		CASE ANIM_FLOW_DOWN_LEFT
+			FOR I = 0 TO 7
+				flowAnimBuffer(I) = cornerFlowDownLeft(offset + I)
+			NEXT I
+		CASE ANIM_FLOW_DOWN_RIGHT
+			FOR I = 0 TO 7
+				flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset + I))
+			NEXT I
+		CASE ANIM_FLOW_LEFT_UP
+			FOR I = 0 TO 7
+				flowAnimBuffer(I) = cornerFlowLeftUp(offset + I)
+			NEXT I
+		CASE ANIM_FLOW_LEFT_DOWN
+			offset = offset + 7
+			FOR I = 0 TO 7
+				flowAnimBuffer(I) = cornerFlowLeftUp(offset - I)
+			NEXT I
+		CASE ANIM_FLOW_UP_LEFT
+			offset = offset + 7
+			FOR I = 0 TO 7
+				flowAnimBuffer(I) = cornerFlowDownLeft(offset - I)
+			NEXT I
+		CASE ANIM_FLOW_UP_RIGHT
+			offset = offset + 7
+			FOR I = 0 TO 7
+				flowAnimBuffer(I) = reverseBits(cornerFlowDownLeft(offset - I))
+			NEXT I
+	END SELECT
 	END
 
 ' which subtile will be next for each stage of animation?

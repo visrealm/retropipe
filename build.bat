@@ -167,7 +167,7 @@ echo   Compiling for CreatiVision
 echo ---------------------------------------------------------------------
 
 set BASENAME=retropipe_%VERSION%_crv
-cvbasic --creativision retropipe.bas %ASMDIR%\%BASENAME%.asm %LIBPATH%
+cvbasic --creativision -rom16 retropipe.bas %ASMDIR%\%BASENAME%.asm %LIBPATH%
 if %errorlevel% neq 0 exit /b %errorlevel%
 gasm80 %ASMDIR%\%BASENAME%.asm -o %BUILDDIR%\%BASENAME%.bin
 echo Output: build\%BASENAME%.bin
