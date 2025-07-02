@@ -141,7 +141,7 @@ main:
 	VDP_REG(5) = defaultReg(5)
 	VDP_REG(6) = defaultReg(6)
 
-	SPRITE FLICKER OFF
+	SPRITE FLICKER OFF	' the CVB sprite flicker routine messes with things. turn it off
 
 	' font patterns - write to each bank
 	FOR #I = $0100 TO $1100 STEP $0800
@@ -223,7 +223,7 @@ main:
 	NEXT I
 
 	' cursor sprites
-	DEFINE SPRITE 0, 4, cursorSprites
+	DEFINE SPRITE 0, 1, cursorSprites
 
 	WHILE 1
 		GOSUB pipeGame
@@ -240,8 +240,7 @@ pipeGame: PROCEDURE
 	DEFINE VRAM NAME_TAB_XY(0, PLAYFIELD_Y + CHUTE_SIZE * 3), 5, chuteBottomNames
 
 	' clear dynamic flow sprite patterns
-	DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 16, emptyTile
-	DEFINE VRAM #VDP_SPRITE_PATT + 34 * 8, 16, emptyTile
+	DEFINE VRAM #VDP_SPRITE_PATT + 8 * 8, 8, emptyTile
 
 	FOR I = 0 TO CHUTE_SIZE - 1
 		chute(I) = RANDOM(7) + 2
@@ -309,10 +308,8 @@ pipeGame: PROCEDURE
 		GOSUB scoreTick
 		
 		gameFrame = gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
-		IF (gameFrame AND $3f) = 0 THEN
+		IF (gameFrame AND $3f) = 0 THEN	' very rough seconds. 64 ticks so will be slow at 50FPS
 			gameSeconds = gameSeconds + 1
-			'#score = #score - 100
-			'GOSUB updateScore
 		END IF
 	WEND
 	END
@@ -378,16 +375,22 @@ updateScore: PROCEDURE
 ' Handle title/logo animation
 ' ------------------------------------------
 logoTick: PROCEDURE
+	CONST LOGO_ANIM_TILE_ID         = 12
+	CONST LOGO_ANIM_TILES_PER_FRAME = 3
+	CONST LOGO_ANIM_SINE_OFFSET     = 23
+
 	' only move the wave every 4 frames
 	logoOffset = gameFrame / 4
 
 	' every frame however, we render a quarter of the new wave
-	logoOffset = (logoOffset AND $f) + 23
-	logoStart = (gameFrame AND 3) * 3 + 12
+	logoStart = (gameFrame AND 3) * LOGO_ANIM_TILES_PER_FRAME + LOGO_ANIM_TILE_ID
+	logoOffset = (logoOffset AND $f) + LOGO_ANIM_SINE_OFFSET - logoStart
 
 	' update the color defs of three tiles
-	FOR I = logoStart TO logoStart + 2
-		DEFINE VRAM #VDP_COLOR_TAB1 + I * 8, 8, VARPTR logoColorWhiteGreen(sine(logoOffset - I))
+	#addr = #VDP_COLOR_TAB1 + logoStart * TILE_ROWS
+	FOR I = 0 TO LOGO_ANIM_TILES_PER_FRAME - 1
+		DEFINE VRAM #addr, TILE_ROWS, VARPTR logoColorWhiteGreen(sine(logoOffset - I))
+		#addr = #addr + TILE_ROWS
 	NEXT I
 	END
 
@@ -471,14 +474,14 @@ flowTick: PROCEDURE
 			flowAnimBuffer(I) = 0
 		NEXT I
 
-		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
-		SPRITE 4, animSprY - 1, animSprX, 32, 0
-	ELSEIF gameState <> GAME_STATE_FAILED THEN
+		DEFINE VRAM #VDP_SPRITE_PATT + 4 * 8, 8, VARPTR flowAnimBuffer(0)
+		SPRITE 4, animSprY - 1, animSprX, 4, 0
+	ELSE
 		animSprX = (animNameX + (currentSubTile AND 3)) * 8
 		animSprY = (animNameY + (currentSubTile / 32)) * 8
 
-		DEFINE VRAM #VDP_SPRITE_PATT + 32 * 8, 8, VARPTR flowAnimBuffer(0)
-		SPRITE 4, animSprY - 1, animSprX, 32, $2
+		DEFINE VRAM #VDP_SPRITE_PATT + 4 * 8, 8, VARPTR flowAnimBuffer(0)
+		SPRITE 4, animSprY - 1, animSprX, 4, $2
 	END IF
 
 	END
@@ -734,9 +737,9 @@ renderCursor: PROCEDURE
 	IF gameState = GAME_STATE_FAILED THEN color = 0
 
 	SPRITE 0, spriteY, spriteX, 0, color
-	SPRITE 1, spriteY + 16, spriteX, 8, color
-	SPRITE 2, spriteY, spriteX + 16, 4, color
-	SPRITE 3, spriteY + 16, spriteX + 16, 12, color
+	SPRITE 1, spriteY + 17, spriteX, 1, color
+	SPRITE 2, spriteY, spriteX + 17, 2, color
+	SPRITE 3, spriteY + 17, spriteX + 17, 3, color
 
 	END
 

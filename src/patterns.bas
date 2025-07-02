@@ -140,25 +140,14 @@ logoColorWhiteGreen:
 
 ' SPRITE PATTERNS
 
+emptyTile:    ' this is part of selSprites, but used for 8 empty bytes
+    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
+
 cursorSprites:
     DATA BYTE $ff, $ff, $c0, $c0, $c0, $c0, $c0, $c0     ' select TL
-    DATA BYTE $c0, $00, $00, $00, $00, $00, $00, $00 
-emptyTile:    ' this is part of selSprites, but used for 16 empty bytes
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00
-
-    DATA BYTE $7f, $7f, $01, $01, $01, $01, $01, $01     ' select TR
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $80, $80, $80, $80, $80, $80, $80, $80     
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $c0, $c0, $c0, $c0, $c0, $c0, $ff     ' select BL
-    DATA BYTE $ff, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $01, $01, $01, $01, $01, $01, $7f     ' select BR
-    DATA BYTE $7f, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $80, $80, $80, $80, $80, $80, $80     
-    DATA BYTE $80, $00, $00, $00, $00, $00, $00, $00     
+    DATA BYTE $c0, $c0, $c0, $c0, $c0, $c0, $ff, $ff     ' select BL
+    DATA BYTE $ff, $ff, $03, $03, $03, $03, $03, $03     ' select TR
+    DATA BYTE $03, $03, $03, $03, $03, $03, $ff, $ff     ' select BR
 
 ' corner flow animation patterns - 7 steps for each
 cornerFlowLeftUp:

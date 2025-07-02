@@ -5,9 +5,11 @@ titleScreen: PROCEDURE
 	
     DEFINE CHAR 136, 96, titleLogo
 
-    ' set the background colors of the title text
-    FOR I = 136 to 232 STEP 4
-        DEFINE COLOR I, 2, titleLogoRow0Color
+    ' set the background colors of the title text first two rows
+    #addr = #VDP_COLOR_TAB1 + (136 * 8)
+    FOR I = 0 TO 23
+        DEFINE VRAM #addr, 16, titleLogoRow0Color
+        #addr = #addr + 32
     NEXT I
 
 	DEFINE VRAM NAME_TAB_XY(0,3), 320, titlePipeNames
@@ -59,6 +61,7 @@ titleScreen: PROCEDURE
     	GOSUB updateNavInput
         IF g_nav THEN EXIT WHILE
         I = RANDOM(255)
+        gameFrame = gameFrame + 1
 	WEND
 
 	VDP_DISABLE_INT_DISP_OFF
@@ -71,17 +74,19 @@ titleScreen: PROCEDURE
 
 titleLogoTick: PROCEDURE
 	' only move the wave every 4 frames
-	logoOffset = FRAME / 4
+	logoOffset = gameFrame / 4
 
 	' every frame however, we render a quarter of the new wave
-	logoOffset = (logoOffset AND $1f) + 24
-	logoStart = (FRAME AND 3) * 6
+	logoStart = (gameFrame AND 3) * 6
+	logoOffset = (logoOffset AND $1f) + 24 - logoStart
 
-    #addr = #VDP_COLOR_TAB2 + 136 * 8
+    #addr = #VDP_COLOR_TAB2 + (138 * 8)
+    #addr = #addr + (logoStart * 32)
 
 	' update the color defs of three tiles
-	FOR I = logoStart TO logoStart + 5
-		DEFINE VRAM #addr + I * 32 + 16, 16, VARPTR titleLogoColorWhiteGreen(titleSine(logoOffset - I))
+	FOR I = 0 TO 5
+		DEFINE VRAM #addr, 16, VARPTR titleLogoColorWhiteGreen(titleSine(logoOffset - I))
+        #addr = #addr + 32
 	NEXT I
 	END
 
