@@ -253,7 +253,6 @@ pipeGame: PROCEDURE
 	cursorY = 3
 	remainingPipes = 15
 	vdpR1Flags = 0
-	VDP_ENABLE_INT
 
 	GOSUB updateCursorPos
 
@@ -350,23 +349,26 @@ pipeGame: PROCEDURE
 	END
 
 spillTick: PROCEDURE
-	IF (gameFrame AND 7) = 0 AND (spillSpriteId < 28) THEN spillSpriteId = spillSpriteId + 4
+	IF (gameFrame AND 7) OR (spillSpriteId >= 28) THEN RETURN
+
+	spillSpriteId = spillSpriteId + 4
 	SELECT CASE lastFlowDir
 		CASE FLOW_RIGHT
-			offX = 0
+			offX = -2
 			offY = 4
 		CASE FLOW_DOWN
 			offX = 4
-			offY = 0
+			offY = -2
 		CASE FLOW_LEFT
-			offX = 8
+			offX = 10
 			offY = 4
 		CASE FLOW_UP
-			offY = 8
+			offY = 10
 			offX = 4
 	END SELECT
 
 	SPRITE 4, lastAnimSprY - offY, lastAnimSprX - offX, spillSpriteId, FLOW_COLOR
+
 	END
 
 
