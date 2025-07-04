@@ -72,8 +72,9 @@ CONST GAME_STATE_ENDED   = 2
 
 CONST GAME_START_DELAY_SECONDS = 10
 
-CONST CURSOR_SPRITE_ID    = 0
-CONST SPILL_SPRITE_ID     = 2
+CONST CURSOR_SPRITE_ID         = 0
+CONST CURSOR_SPRITE_PATT_ID    = 0
+CONST SPILL_SPRITE_PATT_ID     = 2
 CONST SPILL_SPRITE_COUNT  = 6
 
 CONST POINTS_BUILD   		= 100
@@ -105,6 +106,8 @@ DIM currentAnimStep	' 0 to 23
 DIM #currentIndexAddr
 DIM currentIndexPattId
 
+DIM #lastTileNameIndex
+
 DIM flowAnimTemp
 DIM flowAnimBuffer(8)
 DIM silentFrame
@@ -115,6 +118,7 @@ DIM scoreDesiredOffset(5)
 SIGNED scoreCurrentOffset, scoreDesiredOffset
 
 DIM savedNav
+DIM spillSpriteId
 
 
 ' ==========================================
@@ -130,6 +134,9 @@ include "input.bas"
 
 CONST #SCORE_VRAM_ADDR		= #VDP_FREE_START
 
+CONST FLOW_COLOR = VDP_MED_GREEN
+
+
 ' ==========================================
 ' ACTUAL ENTRY POINT
 ' ------------------------------------------
@@ -139,7 +146,7 @@ main:
 	VDP_REG(50) = $80  ' reset VDP registers to boot values
 	VDP_REG(7) = defaultReg(7)
 	VDP_REG(0) = defaultReg(0)  ' VDP_REG() doesn't accept variables, so...
-	VDP_REG(1) = defaultReg(1)
+	VDP_REG(1) = defaultReg(1) OR vdpR1Flags
 	VDP_REG(2) = defaultReg(2)
 	VDP_REG(3) = defaultReg(3)
 	VDP_REG(4) = defaultReg(4)
@@ -231,8 +238,8 @@ main:
 	NEXT I
 
 	' cursor sprites
-	DEFINE SPRITE CURSOR_SPRITE_ID, 1, cursorSprites
-	DEFINE SPRITE SPILL_SPRITE_ID, 6, spillPatt
+	DEFINE SPRITE CURSOR_SPRITE_PATT_ID, 1, cursorSprites
+	DEFINE SPRITE SPILL_SPRITE_PATT_ID, 6, spillPatt
 
 	currentLevel = 1
 	#score = 0
@@ -245,8 +252,12 @@ pipeGame: PROCEDURE
 	cursorX = 4
 	cursorY = 3
 	remainingPipes = 15
+	vdpR1Flags = 0
+	VDP_ENABLE_INT
 
 	GOSUB updateCursorPos
+
+	SPRITE 4, 0, 0, 4, VDP_TRANSPARENT
 
 	' render chute bottom
 	DEFINE VRAM NAME_TAB_XY(0, PLAYFIELD_Y + CHUTE_SIZE * 3), 5, chuteBottomNames
@@ -293,6 +304,7 @@ pipeGame: PROCEDURE
 	gameState = GAME_STATE_BUILDING
 	gameFrame = 0
 	gameSeconds = 0
+	spillSpriteId = 8
 
 	VDP_ENABLE_INT
 
@@ -309,6 +321,11 @@ pipeGame: PROCEDURE
 		ELSEIF gameState = GAME_STATE_ENDED THEN
 			IF gameSeconds < 2 THEN
 				chuteOffset = chuteOffset - 1
+				IF remainingPipes THEN
+					vdpR1Flags = $02
+					VDP_ENABLE_INT
+					GOSUB spillTick
+				END IF
 				GOSUB renderChute
 			ELSEIF gameSeconds = 3 THEN
 				IF remainingPipes = 0 THEN
@@ -331,6 +348,27 @@ pipeGame: PROCEDURE
 		END IF
 	WEND
 	END
+
+spillTick: PROCEDURE
+	IF (gameFrame AND 7) = 0 AND (spillSpriteId < 28) THEN spillSpriteId = spillSpriteId + 4
+	SELECT CASE lastFlowDir
+		CASE FLOW_RIGHT
+			offX = 0
+			offY = 4
+		CASE FLOW_DOWN
+			offX = 4
+			offY = 0
+		CASE FLOW_LEFT
+			offX = 8
+			offY = 4
+		CASE FLOW_UP
+			offY = 8
+			offX = 4
+	END SELECT
+
+	SPRITE 4, lastAnimSprY - offY, lastAnimSprX - offX, spillSpriteId, FLOW_COLOR
+	END
+
 
 ' ==========================================
 ' Handle score animation
@@ -458,6 +496,11 @@ flowTick: PROCEDURE
 	ELSEIF animTile = 2 THEN
 		currentFlowDir = currentAnim AND 3
 		currentSubTile = subTileForFlow1(currentFlowDir)
+
+		lastAnimSprX = animSprX
+		lastAnimSprY = animSprY
+		lastFlowDir = currentFlowDir AND 3
+
 	ELSE
 		currentIndex = currentIndex + offsetForFlow2(currentFlowDir)
 	
@@ -503,13 +546,13 @@ flowTick: PROCEDURE
 		NEXT I
 
 		DEFINE VRAM #VDP_SPRITE_PATT + 4 * 8, 8, VARPTR flowAnimBuffer(0)
-		SPRITE 4, animSprY - 1, animSprX, 4, 0
+		SPRITE 4, animSprY - 1, animSprX, 4, VDP_TRANSPARENT
 	ELSE
 		animSprX = (animNameX + (currentSubTile AND 3)) * 8
 		animSprY = (animNameY + (currentSubTile / 32)) * 8
 
 		DEFINE VRAM #VDP_SPRITE_PATT + 4 * 8, 8, VARPTR flowAnimBuffer(0)
-		SPRITE 4, animSprY - 1, animSprX, 4, $2
+		SPRITE 4, animSprY - 1, animSprX, 4, FLOW_COLOR
 	END IF
 
 	END
@@ -758,23 +801,20 @@ updateCursorPos: PROCEDURE
 ' Render the cursor
 ' ------------------------------------------
 renderCursor: PROCEDURE
-
-	CONST CURSOR_FRAMECOLOR1 = 15	' white
-	CONST CURSOR_COLOR1 = 15	' white
-	CONST CURSOR_COLOR2 = 14	' grey
 	CONST CURSOR_SIZE   = 33
 	CONST CURSOR_SPREAD = CURSOR_SIZE - 16
 
-	color = CURSOR_COLOR1
-	
-	IF gameFrame AND 8 THEN color = CURSOR_COLOR2
-	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = 8
-	IF gameState = GAME_STATE_ENDED THEN color = 0
+	IF gameFrame AND 8 THEN color = VDP_GREY ELSE color = VDP_WHITE 
+	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = VDP_MED_RED
+	IF gameState = GAME_STATE_ENDED THEN
+		 color = VDP_TRANSPARENT
+		 spriteY = 0
+	END IF
 
-	SPRITE 0, spriteY, spriteX, 0, color
-	SPRITE 1, spriteY + CURSOR_SPREAD, spriteX, 1, color
-	SPRITE 2, spriteY, spriteX + CURSOR_SPREAD, 2, color
-	SPRITE 3, spriteY + CURSOR_SPREAD, spriteX + CURSOR_SPREAD, 3, color
+	SPRITE CURSOR_SPRITE_ID + 0, spriteY, spriteX, CURSOR_SPRITE_PATT_ID + 0, color
+	SPRITE CURSOR_SPRITE_ID + 1, spriteY + CURSOR_SPREAD, spriteX, CURSOR_SPRITE_PATT_ID + 1, color
+	SPRITE CURSOR_SPRITE_ID + 2, spriteY, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 2, color
+	SPRITE CURSOR_SPRITE_ID + 3, spriteY + CURSOR_SPREAD, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 3, color
 
 	END
 

@@ -28,6 +28,22 @@ CONST #VDP_FREE_END      = $1FFF
 
 CONST TILE_ROWS          = 8
 
+CONST VDP_TRANSPARENT    = 0
+CONST VDP_BLACK          = 1
+CONST VDP_MED_GREEN      = 2
+CONST VDP_LT_GREEN       = 3
+CONST VDP_DK_BLUE        = 4
+CONST VDP_LT_BLUE        = 5
+CONST VDP_DK_RED         = 6
+CONST VDP_CYAN           = 7
+CONST VDP_MED_RED        = 8
+CONST VDP_LT_RED         = 9
+CONST VDP_DK_YELLOW      = 10
+CONST VDP_LT_YELLOW      = 11
+CONST VDP_DK_GREEN       = 12
+CONST VDP_MAGENTA        = 13
+CONST VDP_GREY           = 14
+CONST VDP_WHITE          = 15
 
 #if TMS9918_TESTING
     DEF FN VDP_REG(VR) = IF (VR < 8) THEN VDP(VR)
@@ -42,10 +58,10 @@ DEF FN VDP_STATUS_REG = VDP_REG(15)
 DEF FN VDP_STATUS_REG0 = VDP_STATUS_REG = 0
 
 ' VDP helpers
-DEF FN VDP_DISABLE_INT = VDP_REG(1) = $C0
-DEF FN VDP_ENABLE_INT = VDP_REG(1) = $E0
-DEF FN VDP_DISABLE_INT_DISP_OFF = VDP_REG(1) = $80
-DEF FN VDP_ENABLE_INT_DISP_OFF = VDP_REG(1) = $A0
+DEF FN VDP_DISABLE_INT = VDP_REG(1) = $C0 OR vdpR1Flags
+DEF FN VDP_ENABLE_INT = VDP_REG(1) = $E0 OR vdpR1Flags
+DEF FN VDP_DISABLE_INT_DISP_OFF = VDP_REG(1) = $80 OR vdpR1Flags
+DEF FN VDP_ENABLE_INT_DISP_OFF = VDP_REG(1) = $A0 OR vdpR1Flags
 ' name table helpers
 DEF FN XY(X, Y) = ((Y) * 32 + (X))                      ' PRINT AT XY(1, 2), ...
 
@@ -53,6 +69,8 @@ DEF FN NAME_TAB_XY(X, Y) = (#VDP_NAME_TAB + XY(X, Y))   ' DEFINE VRAM NAME_TAB_X
 DEF FN PUT_XY(X, Y) = VPOKE NAME_TAB_XY(X, Y)     ' place a byte in the name table
 DEF FN GET_XY(X, Y) = VPEEK(NAME_TAB_XY(X, Y))          ' read a byte from the name table
 
+
+DIM vdpR1Flags
 
 ' -----------------------------------------------------------------------------
 ' detect the vdp type. sets isF18ACompatible
