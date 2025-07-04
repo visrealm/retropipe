@@ -66,13 +66,15 @@ CONST SUBTILE_BL = 64
 CONST SUBTILE_BC = 65
 CONST SUBTILE_BR = 66
 
-CONST ANIM_STEPS = 8 * 3
-
 CONST GAME_STATE_BUILDING = 0
 CONST GAME_STATE_FLOWING  = 1
-CONST GAME_STATE_FAILED   = 2
+CONST GAME_STATE_ENDED   = 2
 
 CONST GAME_START_DELAY_SECONDS = 10
+
+CONST CURSOR_SPRITE_ID    = 0
+CONST SPILL_SPRITE_ID     = 2
+CONST SPILL_SPRITE_COUNT  = 6
 
 CONST POINTS_BUILD   		= 100
 CONST POINTS_REPLACE_DEDUCT = 50
@@ -93,6 +95,9 @@ DIM gameState
 
 DIM cursorIndex
 
+DIM remainingPipes
+
+DIM currentLevel
 DIM currentFlowDir
 DIM currentIndex
 DIM currentAnim     
@@ -184,6 +189,9 @@ main:
     DEFINE CHAR 158, 10, pipes	' empty pipes
     DEFINE CHAR 168, 10, pipes	' full pipes
 
+	DEFINE CHAR 31, 1, tilePiece	' remaining pipes
+	DEFINE COLOR 31, 1, tilePieceColor
+
 	FOR I = 158 TO 167
 	    DEFINE COLOR I, 1, pipeColor
 	NEXT I
@@ -194,7 +202,7 @@ main:
 	' score patterns (dynamic rolling digits)
 	FOR I = 0 TO 4
 		scoreCurrentOffset(I) = 0
-		DEFINE VRAM #VDP_PATT_TAB1 + (24 + I) * 8, 8, VARPTR digits(0)
+		DEFINE VRAM #VDP_PATT_TAB1 + ((24 + I) * 8), 8, VARPTR digits(0)
 		'DEFINE COLOR 24 + I, 1, digitColor
 	NEXT I
 
@@ -223,7 +231,11 @@ main:
 	NEXT I
 
 	' cursor sprites
-	DEFINE SPRITE 0, 1, cursorSprites
+	DEFINE SPRITE CURSOR_SPRITE_ID, 1, cursorSprites
+	DEFINE SPRITE SPILL_SPRITE_ID, 6, spillPatt
+
+	currentLevel = 1
+	#score = 0
 
 	WHILE 1
 		GOSUB pipeGame
@@ -232,7 +244,7 @@ main:
 pipeGame: PROCEDURE
 	cursorX = 4
 	cursorY = 3
-	#score = 0
+	remainingPipes = 15
 
 	GOSUB updateCursorPos
 
@@ -247,7 +259,7 @@ pipeGame: PROCEDURE
 	NEXT I
 	chute(CHUTE_SIZE) = CELL_CLEAR
 
-	PRINT AT XY(20,0), "LEVEL: 1"
+	PRINT AT XY(20,0), "LEVEL: ", currentLevel
 	PRINT AT XY(20,1), "SCORE: \24\25\26\27\28"
 	GOSUB updateScore
 
@@ -294,11 +306,17 @@ pipeGame: PROCEDURE
 			GOSUB flowTick
 		ELSEIF gameSeconds = GAME_START_DELAY_SECONDS THEN
 			gameState = GAME_STATE_FLOWING
-		ELSEIF gameState = GAME_STATE_FAILED THEN
+		ELSEIF gameState = GAME_STATE_ENDED THEN
 			IF gameSeconds < 2 THEN
 				chuteOffset = chuteOffset - 1
 				GOSUB renderChute
 			ELSEIF gameSeconds = 3 THEN
+				IF remainingPipes = 0 THEN
+					currentLevel = currentLevel + 1
+				ELSE
+					currentLevel = 1
+					#score = 0
+				END IF
 				EXIT WHILE
 			END IF
 		END IF
@@ -368,6 +386,15 @@ updateScore: PROCEDURE
 	FOR I = 0 TO 4
 		scoreDesiredOffset(I) = (scoreDesiredOffset(I) - 48) * 8
 	NEXT I
+
+	#addr = NAME_TAB_XY(31 - remainingPipes, 2)
+	VPOKE #addr, 184	' top empty tile
+	IF remainingPipes THEN
+		FOR I = 1 TO remainingPipes
+			VPOKE #addr + i, 31
+		NEXT I
+	END IF
+
 	END
 
 
@@ -422,7 +449,7 @@ flowTick: PROCEDURE
 		IF currentFlowDir < 4 THEN
 			currentSubTile = subTileForFlow0(currentFlowDir)
 		ELSE
-			gameState = GAME_STATE_FAILED
+			gameState = GAME_STATE_ENDED
 			gameSeconds = 0 
 		END IF
 	ELSEIF animTile = 1 THEN
@@ -442,11 +469,12 @@ flowTick: PROCEDURE
 		animSubStep = 7	' ensure flow sprite is hidden
 		tileId = game(currentIndex) AND CELL_TILE_MASK
 		IF tileId < 2 THEN
-			gameState = GAME_STATE_FAILED
+			gameState = GAME_STATE_ENDED
 			gameSeconds = 0
 		ELSE
 			game(currentIndex) = tileId OR CELL_LOCKED_FLAG
 			#score = #score + POINTS_FLOW_TILE
+			IF (remainingPipes) THEN remainingPipes = remainingPipes - 1
 			GOSUB updateScore
 		END IF
 		currentAnim = anims(tileId * 4 + (currentAnim AND 3))
@@ -594,7 +622,7 @@ uiTick: PROCEDURE
 
 	' handle user input
 	delayFrames = 8
-	IF NAV(NAV_OK) AND gameState <> GAME_STATE_FAILED THEN
+	IF NAV(NAV_OK) AND gameState <> GAME_STATE_ENDED THEN
 		tileId = game(cursorIndex)
 		IF (tileId AND CELL_LOCKED_FLAG) = 0 THEN
 			GOSUB placeTile
@@ -621,7 +649,7 @@ uiTick: PROCEDURE
 	END IF
 
 	' render the tile chute if it's not settled
-	IF gameState <> GAME_STATE_FAILED AND chuteOffset <> 0 THEN
+	IF gameState <> GAME_STATE_ENDED AND chuteOffset <> 0 THEN
 		chuteOffset = chuteOffset - 1
 		GOSUB renderChute
 	END IF
@@ -730,16 +758,23 @@ updateCursorPos: PROCEDURE
 ' Render the cursor
 ' ------------------------------------------
 renderCursor: PROCEDURE
-	color = 15
+
+	CONST CURSOR_FRAMECOLOR1 = 15	' white
+	CONST CURSOR_COLOR1 = 15	' white
+	CONST CURSOR_COLOR2 = 14	' grey
+	CONST CURSOR_SIZE   = 33
+	CONST CURSOR_SPREAD = CURSOR_SIZE - 16
+
+	color = CURSOR_COLOR1
 	
-	IF gameFrame AND 8 THEN color = 14
+	IF gameFrame AND 8 THEN color = CURSOR_COLOR2
 	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = 8
-	IF gameState = GAME_STATE_FAILED THEN color = 0
+	IF gameState = GAME_STATE_ENDED THEN color = 0
 
 	SPRITE 0, spriteY, spriteX, 0, color
-	SPRITE 1, spriteY + 17, spriteX, 1, color
-	SPRITE 2, spriteY, spriteX + 17, 2, color
-	SPRITE 3, spriteY + 17, spriteX + 17, 3, color
+	SPRITE 1, spriteY + CURSOR_SPREAD, spriteX, 1, color
+	SPRITE 2, spriteY, spriteX + CURSOR_SPREAD, 2, color
+	SPRITE 3, spriteY + CURSOR_SPREAD, spriteX + CURSOR_SPREAD, 3, color
 
 	END
 
