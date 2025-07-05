@@ -75,6 +75,7 @@ CONST SPILL_SPRITE_COUNT  = 6
 CONST POINTS_BUILD   		= 100
 CONST POINTS_REPLACE_DEDUCT = 50
 CONST POINTS_FLOW_TILE      = 100
+CONST #POINTS_LEVEL_COMPLETE = 1000
 
 CONST FALSE = 0
 CONST TRUE  = -1
@@ -103,6 +104,7 @@ DIM currentAnimStep	' 0 to 23
 DIM #currentIndexAddr
 DIM currentIndexPattId
 DIM currentSpeed' 0, 1, 3, 7, 15 (inverse speed. actually frame delay)
+DIM levelSpeed
 DIM hoverFfwd
 
 DIM #lastTileNameIndex
@@ -262,6 +264,7 @@ pipeGame: PROCEDURE
 	WEND	
 	IF currentSpeed < 2 THEN currentSpeed = 2
 	currentSpeed = currentSpeed - 1	
+	levelSpeed = currentSpeed
 
 	' horizontal top border
 	FILL_BUFFER(184)
@@ -374,6 +377,15 @@ pipeGame: PROCEDURE
 			gameSeconds = gameSeconds + 1
 		END IF
 	WEND
+	END
+
+levelEnd: PROCEDURE
+	gameState = GAME_STATE_ENDED
+	gameSeconds = 0
+	IF remainingPipes = 0 THEN
+		#score = #score + #POINTS_LEVEL_COMPLETE
+		GOSUB updateScore
+	END IF
 	END
 
 
@@ -508,8 +520,7 @@ flowTick: PROCEDURE
 		IF currentFlowDir < 4 THEN
 			currentSubTile = subTileForFlow0(currentFlowDir)
 		ELSE
-			gameState = GAME_STATE_ENDED
-			gameSeconds = 0 
+			GOSUB levelEnd
 		END IF
 	ELSEIF animTile = 1 THEN
 		currentSubTile = SUBTILE_MC
@@ -543,8 +554,7 @@ flowTick: PROCEDURE
 		END IF
 
 		IF tileId < 2 THEN
-			gameState = GAME_STATE_ENDED
-			gameSeconds = 0
+			GOSUB levelEnd
 		ELSE
 			game(currentIndex) = tileId OR CELL_LOCKED_FLAG
 			#score = #score + POINTS_FLOW_TILE
@@ -713,9 +723,13 @@ uiTick: PROCEDURE
 			hoverFfwd = FALSE
 			GOSUB renderFfwdButton
 		ELSEIF NAV(NAV_OK) THEN
-			currentSpeed = 0
+			IF currentSpeed THEN
+				currentSpeed = 0
+			ELSE
+				currentSpeed = levelSpeed
+			END IF
 			hoverFfwd = FALSE
-			GOSUB updateCursorPos
+			GOSUB renderFfwdButton
 		END IF
 	ELSEIF NAV(NAV_OK) AND gameState <> GAME_STATE_ENDED THEN
 		tileId = game(cursorIndex)
