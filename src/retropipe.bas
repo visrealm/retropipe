@@ -101,10 +101,13 @@ DIM remainingPipes
 DIM currentLevel
 DIM currentFlowDir
 DIM currentIndex
+DIM currentTileX
+DIM currentTileY
 DIM currentAnim     
 DIM currentAnimStep	' 0 to 23
 DIM #currentIndexAddr
 DIM currentIndexPattId
+DIM currentSpeed' 0, 1, 3, 7, 15 (inverse speed. actually frame delay)
 
 DIM #lastTileNameIndex
 
@@ -251,8 +254,17 @@ main:
 pipeGame: PROCEDURE
 	cursorX = 4
 	cursorY = 3
-	remainingPipes = 15
+	remainingPipes = 13 + currentLevel
+	IF remainingPipes > 24 THEN remainingPipes = 24
 	vdpR1Flags = 0
+
+	currentSpeed = 8
+	J = currentLevel / 2
+	WHILE J
+		currentSpeed = currentSpeed / 2
+	WEND	
+	IF currentSpeed < 2 THEN currentSpeed = 2
+	currentSpeed = currentSpeed - 1	
 
 	GOSUB updateCursorPos
 
@@ -279,7 +291,9 @@ pipeGame: PROCEDURE
 		game(I) = CELL_GRID
 	NEXT I
 
-	currentIndex = 32
+	currentTileX = RANDOM(PLAYFIELD_WIDTH - 2) + 1
+	currentTileY = RANDOM(PLAYFIELD_HEIGHT - 1)
+	currentIndex = currentTileY * PLAYFIELD_WIDTH + currentTileX
 	currentAnim = ANIM_FLOW_LEFT
 	currentAnimStep = 8
 	currentFlowDir = FLOW_LEFT
@@ -304,6 +318,8 @@ pipeGame: PROCEDURE
 	gameFrame = 0
 	gameSeconds = 0
 	spillSpriteId = 8
+	currentStartDelay = GAME_START_DELAY_SECONDS - currentLevel
+	IF currentStartDelay < 5 THEN currentStartDelay = 5
 
 	VDP_ENABLE_INT
 
@@ -315,7 +331,7 @@ pipeGame: PROCEDURE
 
 		IF gameState = GAME_STATE_FLOWING THEN
 			GOSUB flowTick
-		ELSEIF gameSeconds = GAME_START_DELAY_SECONDS THEN
+		ELSEIF gameSeconds = currentStartDelay THEN
 			gameState = GAME_STATE_FLOWING
 		ELSEIF gameState = GAME_STATE_ENDED THEN
 			IF gameSeconds < 2 THEN
@@ -470,7 +486,7 @@ sine:
 ' ------------------------------------------
 
 flowTick: PROCEDURE
-	IF (gameFrame AND 3) <> 0 THEN RETURN
+	IF (gameFrame AND currentSpeed) <> 0 THEN RETURN
 
 .startFlow:
 	
@@ -504,15 +520,25 @@ flowTick: PROCEDURE
 		lastFlowDir = currentFlowDir AND 3
 
 	ELSE
-		currentIndex = currentIndex + offsetForFlow2(currentFlowDir)
-	
-		animNameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
-		animNameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
-		#currentIndexAddr = #VDP_NAME_TAB + XY(animNameX, animNameY)
-
 		currentAnimStep = 0
 		animSubStep = 7	' ensure flow sprite is hidden
-		tileId = game(currentIndex) AND CELL_TILE_MASK
+
+		prevTileX = currentTileX
+		prevTileY = currentTileY
+
+		currentIndex = currentIndex + offsetForFlow2(currentFlowDir)
+
+		currentTileX = currentIndex % PLAYFIELD_WIDTH
+		currentTileY = currentIndex / PLAYFIELD_WIDTH
+		IF prevTileX <> currentTileX AND prevTileY <> currentTileY THEN
+			tileId = 0
+		ELSE
+			animNameX = PLAYFIELD_X + currentTileX * 3
+			animNameY = PLAYFIELD_Y + currentTileY * 3
+			#currentIndexAddr = #VDP_NAME_TAB + XY(animNameX, animNameY)
+			tileId = game(currentIndex) AND CELL_TILE_MASK
+		END IF
+
 		IF tileId < 2 THEN
 			gameState = GAME_STATE_ENDED
 			gameSeconds = 0
