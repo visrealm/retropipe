@@ -25,7 +25,8 @@ CONST CELL_CLEAR     = 13
 CONST CELL_LOCKED_FLAG = $80
 CONST CELL_TILE_MASK   = $0f
 
-
+' the location of these is computed from the CELL_ constants above
+' cellNames + CELL_XXXX * 9
 cellNames:
     ' grid
     DATA BYTE 128, 129, 130

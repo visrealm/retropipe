@@ -84,3 +84,36 @@ gridColor:
     DATA BYTE $45, $45, $45, $45, $45, $45, $45, $74
     DATA BYTE $15, $15, $15, $15, $15, $15, $15, $75
     DATA BYTE $75, $75, $75, $75, $75, $75, $75, $75
+
+ffwdPatt:
+    DATA BYTE $00, $1F, $20, $20, $20, $20, $20, $20     
+    DATA BYTE $00, $FF, $00, $00, $88, $CC, $EE, $FF     
+    DATA BYTE $00, $F8, $04, $04, $04, $04, $04, $04     
+    DATA BYTE $20, $20, $20, $20, $20, $1F, $1F, $00     
+    DATA BYTE $EE, $CC, $88, $00, $00, $FF, $FF, $00     
+    DATA BYTE $04, $04, $04, $04, $04, $F8, $F8, $00     
+
+ffwdColor:
+    DATA BYTE $F4, $74, $74, $74, $74, $74, $74, $74     
+    DATA BYTE $F4, $74, $F4, $F4, $F4, $F4, $F4, $F4     
+    DATA BYTE $F4, $74, $74, $74, $74, $74, $74, $74     
+    DATA BYTE $74, $74, $74, $74, $74, $74, $14, $74     
+    DATA BYTE $F4, $F4, $F4, $F4, $F4, $74, $14, $F4     
+    DATA BYTE $74, $74, $74, $74, $74, $74, $14, $44     
+
+ffwdPattHover:
+    DATA BYTE $00, $1F, $3F, $3F, $3F, $3F, $3F, $3F     
+    DATA BYTE $00, $FF, $00, $00, $88, $CC, $EE, $FF     
+    DATA BYTE $00, $F8, $FC, $FC, $FC, $FC, $FC, $FC     
+    DATA BYTE $3F, $3F, $3F, $3F, $3F, $1F, $1F, $0F     
+    DATA BYTE $EE, $CC, $88, $00, $00, $FF, $FF, $FF     
+    DATA BYTE $FC, $FC, $FC, $FC, $FC, $F8, $F8, $F0     
+
+
+ffwdColorHover:
+    DATA BYTE $F4, $74, $74, $74, $74, $74, $74, $74     
+    DATA BYTE $F4, $74, $F7, $F7, $F7, $F7, $F7, $F4     
+    DATA BYTE $F4, $74, $74, $74, $74, $74, $74, $74     
+    DATA BYTE $74, $74, $74, $74, $74, $74, $14, $14     
+    DATA BYTE $F7, $F7, $F7, $F7, $F7, $74, $14, $14     
+    DATA BYTE $74, $74, $74, $74, $74, $74, $14, $14     

@@ -103,6 +103,7 @@ DIM currentAnimStep	' 0 to 23
 DIM #currentIndexAddr
 DIM currentIndexPattId
 DIM currentSpeed' 0, 1, 3, 7, 15 (inverse speed. actually frame delay)
+DIM hoverFfwd
 
 DIM #lastTileNameIndex
 
@@ -141,7 +142,7 @@ CONST FLOW_COLOR = VDP_MED_GREEN
 main:
     ' what are we working with?
 '    GOSUB vdpDetect
-	VDP_REG(50) = $80  ' reset VDP registers to boot values
+	'VDP_REG(50) = $80  ' reset VDP registers to boot values
 	VDP_REG(7) = defaultReg(7)
 	VDP_REG(0) = defaultReg(0)  ' VDP_REG() doesn't accept variables, so...
 	VDP_REG(1) = defaultReg(1) OR vdpR1Flags
@@ -216,19 +217,20 @@ main:
 	' gamefield patterns
     DEFINE CHAR PLETTER 178, 7, bordersPletter
 
-	
 	' set up the name table
 	' ------------------------------
 
 	DEFINE VRAM NAME_TAB_XY(0, 0), 12, logoNamesTop
 	DEFINE VRAM NAME_TAB_XY(0, 1), 12, logoNamesBottom
 
+	CONST CHUTE_BOTTOM = PLAYFIELD_Y + CHUTE_SIZE * 3
+
 	' vertical left chute and border
-	FOR I = PLAYFIELD_Y TO PLAYFIELD_Y + CHUTE_SIZE * 3 - 1
+	FOR I = PLAYFIELD_Y TO CHUTE_BOTTOM - 1
 		DEFINE VRAM NAME_TAB_XY(0, I), 5, chuteNames
 	NEXT I
 
-	FOR I = PLAYFIELD_Y + CHUTE_SIZE * 3 + 1 TO 23
+	FOR I = CHUTE_BOTTOM + 1 TO 23
 		PUT_XY(4, I), 183
 	NEXT I
 
@@ -250,6 +252,8 @@ pipeGame: PROCEDURE
 	IF remainingPipes > 24 THEN remainingPipes = 24
 	vdpR1Flags = 0
 
+	hoverFfwd = 0
+
 	currentSpeed = 8
 	J = currentLevel / 3
 	WHILE J
@@ -263,6 +267,7 @@ pipeGame: PROCEDURE
 	FILL_BUFFER(184)
 	DEFINE VRAM NAME_TAB_XY(0, 2), 31, VARPTR rowBuffer(0)
 
+	GOSUB renderFfwdButton
 	GOSUB updateCursorPos
 
 	SPRITE 4, 0, 0, 4, VDP_TRANSPARENT
@@ -337,6 +342,9 @@ pipeGame: PROCEDURE
 			GOSUB flowTick
 		ELSEIF gameSeconds = currentStartDelay THEN
 			gameState = GAME_STATE_FLOWING
+			FOR J = 0 TO 5 : rowBuffer(J) = J : NEXT J
+			DEFINE VRAM NAME_TAB_XY(1, CHUTE_BOTTOM + 1), 3, VARPTR rowBuffer(0)
+			DEFINE VRAM NAME_TAB_XY(1, CHUTE_BOTTOM + 2), 3, VARPTR rowBuffer(3)
 		ELSEIF gameState = GAME_STATE_ENDED THEN
 			IF gameSeconds < 2 THEN
 				chuteOffset = chuteOffset - 1
@@ -368,28 +376,22 @@ pipeGame: PROCEDURE
 	WEND
 	END
 
+
+' ==========================================
+' Handle liquid spill animation
+' ------------------------------------------
 spillTick: PROCEDURE
 	IF (gameFrame AND 7) OR (spillSpriteId >= 28) THEN RETURN
 
 	spillSpriteId = spillSpriteId + 4
-	SELECT CASE lastFlowDir
-		CASE FLOW_RIGHT
-			offX = -2
-			offY = 4
-		CASE FLOW_DOWN
-			offX = 4
-			offY = -2
-		CASE FLOW_LEFT
-			offX = 10
-			offY = 4
-		CASE FLOW_UP
-			offY = 10
-			offX = 4
-	END SELECT
 
-	SPRITE 4, lastAnimSprY - offY, lastAnimSprX - offX, spillSpriteId, FLOW_COLOR
-
+	SPRITE 4, lastAnimSprY - .offsetY(lastFlowDir), lastAnimSprX - .offsetX(lastFlowDir), spillSpriteId, FLOW_COLOR
 	END
+
+.offsetX:
+DATA BYTE -2, 4, 10, 4
+.offsetY:
+DATA BYTE 4, -2, 4, 10
 
 
 ' ==========================================
@@ -706,17 +708,31 @@ uiTick: PROCEDURE
 	' handle user input
 	delayFrames = nextDelayFrames
 	nextDelayFrames = 4
-	IF NAV(NAV_OK) AND gameState <> GAME_STATE_ENDED THEN
+	IF hoverFfwd AND gameState <> GAME_STATE_ENDED THEN
+		IF NAV(NAV_RIGHT) THEN
+			hoverFfwd = FALSE
+			GOSUB renderFfwdButton
+		ELSEIF NAV(NAV_OK) THEN
+			currentSpeed = 0
+			hoverFfwd = FALSE
+			GOSUB updateCursorPos
+		END IF
+	ELSEIF NAV(NAV_OK) AND gameState <> GAME_STATE_ENDED THEN
 		tileId = game(cursorIndex)
 		IF (tileId AND CELL_LOCKED_FLAG) = 0 THEN
 			GOSUB placeTile
 		END IF
 	ELSEIF NAV(NAV_RIGHT) AND cursorX < (PLAYFIELD_WIDTH - 1) THEN
-		cursorX = cursorX + 1
-		GOSUB updateCursorPos
-	ELSEIF NAV(NAV_LEFT) AND cursorX > 0 THEN
-		cursorX = cursorX - 1
-		GOSUB updateCursorPos
+			cursorX = cursorX + 1
+			GOSUB updateCursorPos
+	ELSEIF NAV(NAV_LEFT) THEN
+		IF cursorX > 0 THEN
+			cursorX = cursorX - 1
+			GOSUB updateCursorPos
+		ELSEIF gameState = GAME_STATE_FLOWING THEN
+			hoverFfwd = TRUE
+			GOSUB renderFfwdButton
+		END IF
 	ELSEIF NAV(NAV_DOWN) AND cursorY < (PLAYFIELD_HEIGHT - 1) THEN
 		cursorY = cursorY + 1
 		GOSUB updateCursorPos
@@ -848,7 +864,7 @@ renderCursor: PROCEDURE
 
 	IF gameFrame AND 8 THEN color = VDP_GREY ELSE color = VDP_WHITE 
 	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = VDP_MED_RED
-	IF gameState = GAME_STATE_ENDED THEN
+	IF (gameState = GAME_STATE_ENDED) OR hoverFfwd THEN
 		 color = VDP_TRANSPARENT
 		 spriteY = -24
 	END IF
@@ -857,7 +873,17 @@ renderCursor: PROCEDURE
 	SPRITE CURSOR_SPRITE_ID + 1, spriteY + CURSOR_SPREAD, spriteX, CURSOR_SPRITE_PATT_ID + 1, color
 	SPRITE CURSOR_SPRITE_ID + 2, spriteY, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 2, color
 	SPRITE CURSOR_SPRITE_ID + 3, spriteY + CURSOR_SPREAD, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 3, color
+	END
 
+renderFfwdButton: PROCEDURE
+	IF hoverFfwd THEN
+		DEFINE VRAM PLETTER #VDP_PATT_TAB3, 6 * 8, ffwdPattHoverPletter
+		DEFINE VRAM PLETTER #VDP_COLOR_TAB3, 6 * 8, ffwdColorHoverPletter
+	ELSE
+		DEFINE VRAM PLETTER #VDP_PATT_TAB3, 6 * 8, ffwdPattPletter
+		DEFINE VRAM PLETTER #VDP_COLOR_TAB3, 6 * 8, ffwdColorPletter
+	END IF
+	GOSUB updateCursorPos
 	END
 
 #if SHOW_TITLE

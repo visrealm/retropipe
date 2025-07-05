@@ -45,3 +45,27 @@
     DATA BYTE $17, $74, $8f, $16, $75, $ff, $ff, $ff
     DATA BYTE $fc
 
+  ffwdPattPletter: ' source: 48 bytes. compressed: 40 bytes
+    DATA BYTE $06, $00, $1f, $20, $80, $00, $00, $ff
+    DATA BYTE $00, $00, $88, $23, $cc, $ee, $05, $f8
+    DATA BYTE $04, $4d, $00, $00, $14, $1f, $1f, $00
+    DATA BYTE $ee, $cc, $88, $56, $00, $1b, $16, $83
+    DATA BYTE $14, $f8, $f8, $00, $ff, $ff, $ff, $ff
+
+  ffwdColorPletter: ' source: 48 bytes. compressed: 24 bytes
+    DATA BYTE $0d, $f4, $74, $96, $00, $f4, $01, $cd
+    DATA BYTE $00, $74, $e6, $00, $14, $d3, $15, $07
+    DATA BYTE $f4, $c7, $0f, $44, $ff, $ff, $ff, $fe
+
+  ffwdPattHoverPletter: ' source: 48 bytes. compressed: 40 bytes
+    DATA BYTE $06, $00, $1f, $3f, $80, $00, $00, $ff
+    DATA BYTE $00, $00, $88, $23, $cc, $ee, $05, $f8
+    DATA BYTE $fc, $4d, $00, $00, $14, $1f, $1f, $0f
+    DATA BYTE $ee, $cc, $88, $56, $00, $1b, $00, $83
+    DATA BYTE $14, $f8, $f8, $f0, $ff, $ff, $ff, $ff
+
+  ffwdColorHoverPletter: ' source: 48 bytes. compressed: 24 bytes
+    DATA BYTE $0d, $f4, $74, $a7, $00, $07, $f7, $2d
+    DATA BYTE $00, $f4, $0f, $e3, $00, $14, $14, $4c
+    DATA BYTE $15, $07, $fb, $0f, $ff, $ff, $ff, $ff
+
