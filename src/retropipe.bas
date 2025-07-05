@@ -203,13 +203,13 @@ main:
     DEFINE CHAR PLETTER 0, 24, logoTopPletter
 
 	' tile patterns and colors
-    DEFINE CHAR 128, 30, grid
+    DEFINE CHAR PLETTER 128, 30, gridPletter
     DEFINE COLOR 128, 18, gridColor
 	FOR I = 137 TO 175
 	    DEFINE COLOR I, 1, baseColor
 	NEXT I
-    DEFINE CHAR 158, 10, pipes	' empty pipes
-    DEFINE CHAR 168, 10, pipes	' full pipes
+    DEFINE CHAR PLETTER 158, 10, pipesPletter	' empty pipes
+    DEFINE CHAR PLETTER 168, 10, pipesPletter	' full pipes
 
 	DEFINE CHAR 31, 1, tilePiece	' remaining pipes
 	DEFINE COLOR 31, 1, tilePieceColor
@@ -230,7 +230,7 @@ main:
 
 
 	' gamefield patterns
-    DEFINE CHAR 178, 7, borders
+    DEFINE CHAR PLETTER 178, 7, bordersPletter
 
 	
 	' set up the name table
@@ -602,23 +602,29 @@ flowTick: PROCEDURE
 
 ' generate dynamic sprite pattern data for H/V liquid flow
 .flowSpriteStraight: PROCEDURE
+	CONST #TILE_BASE_ADDR = #VDP_PATT_TAB1 + (158 * 8)
 	SELECT CASE currentFlowDir
 		CASE FLOW_LEFT
 			flowAnimTemp = (flowAnimTemp * 2) OR $01
+
+			DEFINE VRAM READ #TILE_BASE_ADDR + currentIndexPattId, 8, VARPTR flowAnimBuffer(0)
 			FOR I = 0 TO 7
 				' NABU: For some reason  flowAnimTemp AND NOT pipes(currentIndexPattId + I))
 				'       doesn't work. results in $ff
-				flowAnimBuffer(I) = (NOT pipes(currentIndexPattId + I)) AND flowAnimTemp
+				flowAnimBuffer(I) = (NOT flowAnimBuffer(I)) AND flowAnimTemp
 			NEXT I
 		CASE FLOW_RIGHT
+			DEFINE VRAM READ #TILE_BASE_ADDR + currentIndexPattId, 8, VARPTR flowAnimBuffer(0)
 			flowAnimTemp = (flowAnimTemp / 2) OR $80
 			FOR I = 0 TO 7
-				flowAnimBuffer(I) = NOT pipes(currentIndexPattId + I) AND flowAnimTemp
+				flowAnimBuffer(I) = NOT flowAnimBuffer(I) AND flowAnimTemp
 			NEXT I
 		CASE FLOW_UP
-			flowAnimBuffer(7 - animSubStep) = NOT pipes(currentIndexPattId + 7 - animSubStep)
+			I = VPEEK(#TILE_BASE_ADDR + currentIndexPattId + 7 - animSubStep)
+			flowAnimBuffer(7 - animSubStep) = NOT I
 		CASE FLOW_DOWN
-			flowAnimBuffer(animSubStep) = NOT pipes(currentIndexPattId + animSubStep)
+			I = VPEEK(#TILE_BASE_ADDR + currentIndexPattId + animSubStep)
+			flowAnimBuffer(animSubStep) = NOT I
 	END SELECT
 	END	
 
@@ -868,6 +874,7 @@ include "title.bas"
 include "font.pletter.bas"
 include "logo.pletter.bas"
 include "sprites.pletter.bas"
+include "tiles.pletter.bas"
 include "patterns.bas"
 include "lookups.bas"
 
