@@ -141,11 +141,13 @@ logoColorWhiteGreen:
     DATA BYTE $74, $54, $24, $24, $24, $24, $54, $74
 
 tilePiece:
-    DATA BYTE $FF, $3C, $81, $FF, $FF, $81, $3C, $FF
+    DATA BYTE $7F, $1C, $41, $7F, $7F, $41, $1C, $FF
+'    DATA BYTE $FF, $3C, $81, $FF, $FF, $81, $3C, $FF
 '    DATA BYTE $1C, $41, $7F, $7F, $41, $1C, $00, $FF
 '    DATA BYTE $7F, $41, $7F, $7F, $41, $7F, $00, $FF
 tilePieceColor:
     DATA BYTE $74, $54, $24, $24, $24, $24, $54, $74
+'    DATA BYTE $74, $54, $24, $24, $24, $24, $54, $74
 '    DATA BYTE $54, $24, $24, $24, $24, $54, $74, $74
 '    DATA BYTE $74, $24, $24, $24, $24, $74, $74, $f4
 

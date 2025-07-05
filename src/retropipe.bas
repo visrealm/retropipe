@@ -227,11 +227,6 @@ main:
 	DEFINE VRAM NAME_TAB_XY(0, 0), 12, logoNamesTop
 	DEFINE VRAM NAME_TAB_XY(0, 1), 12, logoNamesBottom
 
-	' horizontal top border
-	FOR I = 0 TO 31
-		PUT_XY(I, 2), 184
-	NEXT I
-
 	' vertical left chute and border
 	FOR I = PLAYFIELD_Y TO PLAYFIELD_Y + CHUTE_SIZE * 3 - 1
 		DEFINE VRAM NAME_TAB_XY(0, I), 5, chuteNames
@@ -244,7 +239,7 @@ main:
 	DEFINE SPRITE CURSOR_SPRITE_PATT_ID, 1, cursorSprites
 	DEFINE SPRITE SPILL_SPRITE_PATT_ID, 6, spillPatt
 
-	currentLevel = 1
+	currentLevel = 7
 	#score = 0
 
 	WHILE 1
@@ -259,12 +254,18 @@ pipeGame: PROCEDURE
 	vdpR1Flags = 0
 
 	currentSpeed = 8
-	J = currentLevel / 2
+	J = currentLevel / 3
 	WHILE J
 		currentSpeed = currentSpeed / 2
+		J = J - 1
 	WEND	
 	IF currentSpeed < 2 THEN currentSpeed = 2
 	currentSpeed = currentSpeed - 1	
+
+	' horizontal top border
+	FOR I = 0 TO 31
+		PUT_XY(I, 2), 184
+	NEXT I
 
 	GOSUB updateCursorPos
 
@@ -303,6 +304,8 @@ pipeGame: PROCEDURE
 	#currentIndexAddr = #VDP_NAME_TAB + XY(animNameX, animNameY)
 
 	game(currentIndex) = CELL_PIPE_ST OR CELL_LOCKED_FLAG
+	'game(15) = $81
+	'game(37) = $81
 
 	FOR g_cell = 0 TO PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT - 1
 		g_type = game(g_cell) AND CELL_TILE_MASK
