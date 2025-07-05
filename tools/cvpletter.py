@@ -30,7 +30,7 @@ def extract_labels_and_data(bas_path):
                 continue  # Skip empty and comment lines
 
             # Detect label declarations (e.g., LabelName:)
-            if re.match(r'^[a-zA-Z_][\w]*\s*:$', stripped):
+            if re.match(r'^[a-zA-Z_][\w]*\s*:*$', stripped):
                 if label and data_accum:
                     labels[label] = data_accum
                 label = stripped[:-1]
@@ -103,10 +103,10 @@ def write_final_bas(input_bas, bas_output, compressed_blocks, source_sizes):
                 line = ', '.join(f"${b:02x}" for b in group)
                 f.write(f"    DATA BYTE {line}\n")
             f.write("\n")
-            print(f"  {label + "Pletter:":<25} - in: {str(source_sizes[label]) + "B":>8} - out: {str(len(compressed)) + "B":>8} - saved: {str(source_sizes[label] - len(compressed))+"B":>8}")
+            print(f"  {label + "Pletter:":<25} - in: {str(source_sizes[label]) + "B":>6} - out: {str(len(compressed)) + "B":>6} - saved: {str(source_sizes[label] - len(compressed))+"B":>6}")
 
 
-    print(f"{bas_output:<27} - in: {str(source_bytes) + "B":>8} - out: {str(compressed_bytes) + "B":>8} - saved: {str(source_bytes - compressed_bytes)+ "B":>8}\n")
+    print(f"{bas_output:<27} - in: {str(source_bytes) + "B":>6} - out: {str(compressed_bytes) + "B":>6} - saved: {str(source_bytes - compressed_bytes)+ "B":>6}\n")
 
 def main():
     if len(sys.argv) != 2:

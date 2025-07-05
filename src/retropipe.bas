@@ -200,7 +200,7 @@ main:
 #endif
 
 	' title / logo patterns
-    DEFINE CHAR 0, 24, logo
+    DEFINE CHAR PLETTER 0, 24, logoTopPletter
 
 	' tile patterns and colors
     DEFINE CHAR 128, 30, grid
@@ -249,7 +249,7 @@ main:
 
 	' cursor sprites
 	DEFINE SPRITE CURSOR_SPRITE_PATT_ID, 1, cursorSprites
-	DEFINE SPRITE SPILL_SPRITE_PATT_ID, 6, spillPatt
+	DEFINE SPRITE PLETTER SPILL_SPRITE_PATT_ID, 6, spillPattPletter
 
 	currentLevel = 7
 	#score = 0
@@ -866,6 +866,8 @@ include "title.bas"
 #endif
 
 include "font.pletter.bas"
+include "logo.pletter.bas"
+include "sprites.pletter.bas"
 include "patterns.bas"
 include "lookups.bas"
 

@@ -63,33 +63,6 @@ pipes:  ' empty (158) and filled (168)
     DATA BYTE $FF, $E0, $C0, $80, $80, $80, $80, $80    ' DR (MC)
     DATA BYTE $80, $80, $80, $80, $80, $C0, $E0, $FF    ' UR (MC)
     DATA BYTE $01, $01, $01, $01, $01, $03, $07, $FF    ' UL (MC)
- 
-logo: ' RetroPIPE logo (0)
-    DATA BYTE $0F, $3F, $7F, $7F, $F8, $F0, $F1, $F3     
-    DATA BYTE $80, $C0, $E0, $F0, $F0, $F1, $F3, $F3     
-    DATA BYTE $00, $00, $00, $00, $7C, $FE, $FF, $C7     
-    DATA BYTE $3C, $3C, $3C, $3C, $3F, $3F, $3F, $3F     
-    DATA BYTE $00, $00, $00, $00, $0E, $3F, $3F, $7F     
-    DATA BYTE $00, $00, $00, $00, $07, $9F, $BF, $3F     
-    DATA BYTE $00, $00, $01, $01, $83, $E3, $F3, $F3     
-    DATA BYTE $3C, $FF, $FF, $FF, $E3, $C3, $C7, $CF     
-    DATA BYTE $1E, $1E, $9E, $DE, $DE, $DE, $DE, $DE     
-    DATA BYTE $00, $C3, $E3, $F7, $F7, $F7, $F7, $F7     
-    DATA BYTE $FC, $FC, $FC, $FC, $80, $80, $FC, $FC     
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-    DATA BYTE $F7, $F7, $F7, $F7, $F3, $F3, $F1, $F1     ' bottom (12)
-    DATA BYTE $E7, $C7, $C7, $C7, $E7, $E3, $F1, $F0     
-    DATA BYTE $87, $9F, $9F, $C0, $F0, $FF, $FE, $7C     
-    DATA BYTE $BC, $BC, $3E, $3F, $1F, $1F, $0F, $07     
-    DATA BYTE $79, $78, $78, $78, $78, $78, $78, $78     
-    DATA BYTE $7C, $78, $78, $7C, $3F, $3F, $1F, $07     
-    DATA BYTE $FB, $7B, $7B, $FB, $F3, $F3, $E3, $83     
-    DATA BYTE $DF, $DE, $DC, $C0, $C0, $C0, $C0, $C0     
-    DATA BYTE $9E, $1E, $1E, $1E, $1E, $1E, $1E, $1E     
-    DATA BYTE $F7, $F7, $F7, $F0, $F0, $F0, $F0, $F0     
-    DATA BYTE $E7, $87, $07, $07, $07, $03, $03, $00     
-    DATA BYTE $FC, $FC, $80, $80, $FC, $FC, $FC, $FC     
-
 
 borders:  ' edges and such (178)
     DATA BYTE $C1, $C1, $C1, $C1, $C1, $C1, $C1, $C1    ' chute R
@@ -192,33 +165,6 @@ cornerFlowDownLeft:
     DATA BYTE $FE, $1E, $0E, $0E, $0E, $1C, $18, $00
     DATA BYTE $FE, $7E, $3E, $1E, $3E, $3C, $38, $00
     DATA BYTE $FE, $FE, $7E, $3E, $3E, $7C, $78, $00
-
-spillPatt:
-    DATA BYTE $00, $00, $00, $00, $00, $01, $03, $03     
-    DATA BYTE $03, $03, $01, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $00, $00, $80, $C0, $E0     
-    DATA BYTE $E0, $C0, $C0, $00, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $00, $03, $03, $0F, $0F     
-    DATA BYTE $07, $07, $07, $03, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $00, $C0, $E0, $E0, $F0     
-    DATA BYTE $E0, $C0, $C0, $80, $00, $00, $00, $00     
-    DATA BYTE $00, $00, $03, $07, $0F, $0F, $1F, $1F     
-    DATA BYTE $1F, $1F, $0F, $0F, $04, $00, $00, $00     
-    DATA BYTE $00, $00, $00, $F0, $F8, $F8, $F8, $F8     
-    DATA BYTE $F8, $F0, $F0, $E0, $40, $00, $00, $00     
-    DATA BYTE $00, $04, $07, $0F, $1F, $3F, $3F, $3F     
-    DATA BYTE $1F, $0F, $0F, $1F, $1F, $0F, $0C, $00     
-    DATA BYTE $00, $00, $C0, $E0, $F8, $F8, $FC, $FC     
-    DATA BYTE $F8, $F8, $F0, $E0, $C0, $C0, $00, $00     
-    DATA BYTE $00, $1F, $1F, $1F, $3F, $3F, $7F, $7F     
-    DATA BYTE $7F, $7F, $7F, $7F, $1F, $0F, $0F, $00     
-    DATA BYTE $00, $80, $C0, $F0, $FC, $FE, $FE, $FC     
-    DATA BYTE $FC, $FC, $FC, $FC, $FC, $F0, $C0, $00     
-    DATA BYTE $1F, $3F, $3F, $3F, $3F, $3F, $7F, $FF     
-    DATA BYTE $FF, $FF, $FF, $FF, $7F, $1F, $0F, $0F     
-    DATA BYTE $00, $80, $F0, $FE, $FF, $FF, $FF, $FF     
-    DATA BYTE $FC, $FC, $FE, $FE, $FE, $FC, $E0, $C0     
-
 
 ' NAME TABLE MAPS
 
