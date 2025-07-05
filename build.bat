@@ -193,7 +193,30 @@ echo Output: build\%BASENAME%.bin
 ::gasm80 asm\retropipetool_hbc56.asm -o bin\retropipetool_hbc56.rom
 
 echo.
-for %%A in (%BUILDDIR%\*.*) do @echo %%~nxA        %%~zA bytes
+
+
+:: Just output our compiled ROM files
+:: This is very colvuluted way to format the output
+set "pad=                              "
+for %%A in (%BUILDDIR%\*.*) do (
+    set "name=%%~nxA"
+    set "size=%%~zA"
+    call :printAligned
+)
+goto :eof
+
+:printAligned
+setlocal enabledelayedexpansion
+set "namePadded=!name!!pad!"
+set "namePadded=!namePadded:~0,30!"
+set "sizePad=!pad!!size!"
+set "sizePad=!sizePad:~-8!"
+echo !namePadded!!sizePad! bytes
+endlocal
+goto :eof
+
+:: We're done :)
+
 
 popd
 echo.

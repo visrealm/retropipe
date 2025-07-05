@@ -11,7 +11,7 @@
 
 ' TILE PATTERNS
 
-digits:
+digits: ' uncompressed
     DATA BYTE $7C, $CE, $DE, $F6, $E6, $C6, $7C, $00 ' 0
     DATA BYTE $18, $38, $18, $18, $18, $18, $7E, $00 ' 1
     DATA BYTE $7C, $C6, $06, $7C, $C0, $C0, $FE, $00 ' 2
@@ -65,16 +65,8 @@ tilePieceColor:
 
 ' SPRITE PATTERNS
 
-emptyTile:    ' this is part of selSprites, but used for 8 empty bytes
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00     
-
-cursorSprites:
-    DATA BYTE $ff, $ff, $c0, $c0, $c0, $c0, $c0, $c0     ' select TL
-    DATA BYTE $c0, $c0, $c0, $c0, $c0, $c0, $ff, $ff     ' select BL
-    DATA BYTE $ff, $ff, $03, $03, $03, $03, $03, $03     ' select TR
-    DATA BYTE $03, $03, $03, $03, $03, $03, $ff, $ff     ' select BR
-
 ' corner flow animation patterns - 7 steps for each
+' uncompressed because we want direct access to generate flow patterns
 cornerFlowLeftUp:
     DATA BYTE $01, $01, $01, $01, $01, $01, $03, $00
     DATA BYTE $01, $01, $01, $03, $03, $07, $0F, $00

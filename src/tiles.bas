@@ -9,6 +9,23 @@
 '
 ' https://github.com/visrealm/retropipe
 
+CONST CELL_GRID      = 0
+CONST CELL_BASE      = 1
+CONST CELL_PIPE_H    = 2
+CONST CELL_PIPE_V    = 3
+CONST CELL_PIPE_X    = 4
+CONST CELL_PIPE_DR   = 5
+CONST CELL_PIPE_DL   = 6
+CONST CELL_PIPE_UR   = 7
+CONST CELL_PIPE_UL   = 8
+CONST CELL_PIPE_ST   = 9
+
+CONST CELL_CLEAR     = 13
+
+CONST CELL_LOCKED_FLAG = $80
+CONST CELL_TILE_MASK   = $0f
+
+
 cellNames:
     ' grid
     DATA BYTE 128, 129, 130
@@ -47,47 +64,26 @@ cellNames:
     DATA BYTE 159, 167, 142
     DATA BYTE 152, 144, 145
 
-    ' start (left)
+    ' start (flow right)
+    DATA BYTE 146, 138, 149
+    DATA BYTE "S", 158, 160
+    DATA BYTE 152, 144, 155            
+
+    ' start (down down)
+    DATA BYTE 147, "S", 150
+    DATA BYTE 140, 161, 142
+    DATA BYTE 153, 163, 156        
+
+    ' start (flow left)
     DATA BYTE 146, 138, 149
     DATA BYTE 159, 158, "S"
     DATA BYTE 152, 144, 155            
 
-    ' filled h -
-    DATA BYTE 146, 138, 149
-    DATA BYTE 169, 168, 170
-    DATA BYTE 152, 144, 155            
-    ' filled v |
-    DATA BYTE 147, 172, 150
-    DATA BYTE 140, 171, 142
-    DATA BYTE 153, 173, 156        
-    ' filled xh +- 
-    DATA BYTE 148, 162, 150
-    DATA BYTE 169, 161, 170
-    DATA BYTE 154, 163, 157        
-    ' filled xv +|
-    DATA BYTE 148, 172, 150
-    DATA BYTE 159, 171, 160
-    DATA BYTE 154, 173, 157        
-    ' filled xx ++
-    DATA BYTE 148, 172, 150
-    DATA BYTE 169, 171, 170
-    DATA BYTE 154, 173, 157        
-    ' filled dr /
-    DATA BYTE 137, 138, 149
-    DATA BYTE 140, 175, 170
-    DATA BYTE 153, 173, 157       
-    ' filled dl \
-    DATA BYTE 146, 138, 139
-    DATA BYTE 169, 174, 142
-    DATA BYTE 154, 173, 156        
-    ' filled ur \
-    DATA BYTE 137, 172, 150
-    DATA BYTE 140, 176, 170
-    DATA BYTE 143, 144, 155        
-    ' filled ul /
-    DATA BYTE 148, 172, 139
-    DATA BYTE 169, 177, 142
-    DATA BYTE 152, 144, 145      
+    ' start (flow up)
+    DATA BYTE 147, 162, 150
+    DATA BYTE 140, 161, 142
+    DATA BYTE 153, "S", 156        
+
     ' clear
     DATA BYTE 32, 32, 32
     DATA BYTE 32, 32, 32

@@ -69,6 +69,9 @@ DEF FN NAME_TAB_XY(X, Y) = (#VDP_NAME_TAB + XY(X, Y))   ' DEFINE VRAM NAME_TAB_X
 DEF FN PUT_XY(X, Y) = VPOKE NAME_TAB_XY(X, Y)     ' place a byte in the name table
 DEF FN GET_XY(X, Y) = VPEEK(NAME_TAB_XY(X, Y))          ' read a byte from the name table
 
+' used as a staging area for dynamic vram data (instead of a VPOKE in a loop or similar)
+DIM rowBuffer(32)
+DEF FN FILL_BUFFER(C) = FOR J = 0 TO 31 : rowBuffer(J) = C : NEXT J
 
 DIM vdpR1Flags
 

@@ -34,3 +34,9 @@ spillPatt:
     DATA BYTE $FF, $FF, $FF, $FF, $7F, $1F, $0F, $0F     
     DATA BYTE $00, $80, $F0, $FE, $FF, $FF, $FF, $FF     
     DATA BYTE $FC, $FC, $FE, $FE, $FE, $FC, $E0, $C0     
+
+cursorSprites:
+    DATA BYTE $ff, $ff, $c0, $c0, $c0, $c0, $c0, $c0     ' select TL
+    DATA BYTE $c0, $c0, $c0, $c0, $c0, $c0, $ff, $ff     ' select BL
+    DATA BYTE $ff, $ff, $03, $03, $03, $03, $03, $03     ' select TR
+    DATA BYTE $03, $03, $03, $03, $03, $03, $ff, $ff     ' select BR

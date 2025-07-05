@@ -27,3 +27,8 @@
     DATA BYTE $20, $8e, $1f, $f0, $fe, $0b, $aa, $1c
     DATA BYTE $24, $25, $42, $ff, $ff, $ff, $ff, $c0
 
+  cursorSpritesPletter: ' source: 32 bytes. compressed: 17 bytes
+    DATA BYTE $06, $ff, $ff, $c0, $e5, $00, $0d, $37
+    DATA BYTE $00, $03, $2f, $00, $0d, $ff, $ff, $ff
+    DATA BYTE $fc
+

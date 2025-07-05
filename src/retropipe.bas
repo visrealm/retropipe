@@ -25,22 +25,6 @@ CONST CHUTE_X = 1
 CONST CHUTE_Y = 3
 CONST CHUTE_SIZE = 5
 
-CONST CELL_GRID      = 0
-CONST CELL_BASE      = 1
-CONST CELL_PIPE_H    = 2
-CONST CELL_PIPE_V    = 3
-CONST CELL_PIPE_X    = 4
-CONST CELL_PIPE_DR   = 5
-CONST CELL_PIPE_DL   = 6
-CONST CELL_PIPE_UR   = 7
-CONST CELL_PIPE_UL   = 8
-CONST CELL_PIPE_ST   = 9
-
-CONST CELL_CLEAR     = 19
-
-CONST CELL_LOCKED_FLAG = $80
-CONST CELL_TILE_MASK   = $0f
-
 CONST PIPE_LEFT   = 0
 CONST PIPE_TOP    = 1
 CONST PIPE_RIGHT  = 2
@@ -133,7 +117,6 @@ SIGNED scoreCurrentOffset, scoreDesiredOffset
 
 DIM savedNav
 DIM spillSpriteId
-
 
 ' ==========================================
 ' ENTRY POINT
@@ -244,12 +227,13 @@ main:
 	FOR I = PLAYFIELD_Y TO PLAYFIELD_Y + CHUTE_SIZE * 3 - 1
 		DEFINE VRAM NAME_TAB_XY(0, I), 5, chuteNames
 	NEXT I
+
 	FOR I = PLAYFIELD_Y + CHUTE_SIZE * 3 + 1 TO 23
 		PUT_XY(4, I), 183
 	NEXT I
 
 	' cursor sprites
-	DEFINE SPRITE CURSOR_SPRITE_PATT_ID, 1, cursorSprites
+	DEFINE SPRITE PLETTER CURSOR_SPRITE_PATT_ID, 1, cursorSpritesPletter
 	DEFINE SPRITE PLETTER SPILL_SPRITE_PATT_ID, 6, spillPattPletter
 
 	currentLevel = 1
@@ -276,9 +260,8 @@ pipeGame: PROCEDURE
 	currentSpeed = currentSpeed - 1	
 
 	' horizontal top border
-	FOR I = 0 TO 31
-		PUT_XY(I, 2), 184
-	NEXT I
+	FILL_BUFFER(184)
+	DEFINE VRAM NAME_TAB_XY(0, 2), 31, VARPTR rowBuffer(0)
 
 	GOSUB updateCursorPos
 
@@ -288,7 +271,8 @@ pipeGame: PROCEDURE
 	DEFINE VRAM NAME_TAB_XY(0, PLAYFIELD_Y + CHUTE_SIZE * 3), 5, chuteBottomNames
 
 	' clear dynamic flow sprite patterns
-	DEFINE VRAM #VDP_SPRITE_PATT + 8 * 8, 8, emptyTile
+	FILL_BUFFER(0)
+	DEFINE VRAM #VDP_SPRITE_PATT + 8 * 8, 8, VARPTR rowBuffer(0)
 
 	FOR I = 0 TO CHUTE_SIZE - 1
 		chute(I) = RANDOM(7) + 2
@@ -305,18 +289,22 @@ pipeGame: PROCEDURE
 		game(I) = CELL_GRID
 	NEXT I
 
+
+	' start tile position
 	currentTileX = RANDOM(PLAYFIELD_WIDTH - 2) + 1
-	currentTileY = RANDOM(PLAYFIELD_HEIGHT - 1)
+	currentTileY = RANDOM(PLAYFIELD_HEIGHT - 2) + 1
 	currentIndex = currentTileY * PLAYFIELD_WIDTH + currentTileX
-	currentAnim = ANIM_FLOW_LEFT
-	currentAnimStep = 8
-	currentFlowDir = FLOW_LEFT
 
 	animNameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
 	animNameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
 	#currentIndexAddr = #VDP_NAME_TAB + XY(animNameX, animNameY)
 
-	game(currentIndex) = CELL_PIPE_ST OR CELL_LOCKED_FLAG
+	' generate the start tile
+	I = RANDOM(4)
+	currentAnim = (I * 16) OR I
+	currentAnimStep = 8
+	currentFlowDir = I
+	game(currentIndex) = (CELL_PIPE_ST + I) OR CELL_LOCKED_FLAG
 	'game(15) = $81
 	'game(37) = $81
 
@@ -460,12 +448,9 @@ updateScore: PROCEDURE
 	NEXT I
 
 	#addr = NAME_TAB_XY(31 - remainingPipes, 2)
-	VPOKE #addr, 184	' top empty tile
-	IF remainingPipes THEN
-		FOR I = 1 TO remainingPipes
-			VPOKE #addr + i, 31
-		NEXT I
-	END IF
+	IF remainingPipes THEN FILL_BUFFER(31)
+	rowBuffer(0) = 184
+	DEFINE VRAM #addr, remainingPipes + 1, VARPTR rowBuffer(0)
 
 	END
 
@@ -581,7 +566,7 @@ flowTick: PROCEDURE
 	IF animSubStep = 7 AND skipAnim = 0 THEN
 		IF currentAnimStep > 0 THEN
 			I = VPEEK(#currentIndexAddr + currentSubTile)
-			VPOKE #currentIndexAddr + currentSubTile, I+ 10
+			VPOKE #currentIndexAddr + currentSubTile, I + 10
 		END IF
 
 		flowAnimTemp = 0
@@ -695,7 +680,10 @@ anims:
 	DATA BYTE ANIM_FLOW_RIGHT_DOWN, ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_UP_LEFT    ' bottom/left corner
 	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_DOWN_RIGHT, ANIM_FLOW_LEFT_UP,   ANIM_FLOW_INVALID    ' top/right corner
 	DATA BYTE ANIM_FLOW_RIGHT_UP,   ANIM_FLOW_DOWN_LEFT,  ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID    ' top/left corner
-	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID    ' start
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID    ' start left
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID    ' start top
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID    ' start right
+	DATA BYTE ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,    ANIM_FLOW_INVALID,   ANIM_FLOW_INVALID    ' start down
 
 
 ' ==========================================

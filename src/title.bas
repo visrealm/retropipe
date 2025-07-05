@@ -18,8 +18,6 @@ titleScreen: PROCEDURE
         DEFINE VRAM PLETTER #I + 136* 8, 96* 8, titleLogoPletter
     NEXT #I
 
-    'DEFINE CHAR 136, 96, titleLogo
-
     ' set the background colors of the title text first two rows
     #addr = #VDP_COLOR_TAB1 + (136 * 8)
     FOR I = 0 TO 23
@@ -27,7 +25,6 @@ titleScreen: PROCEDURE
         #addr = #addr + 32
     NEXT I
 
-'	DEFINE VRAM NAME_TAB_XY(0,3), 320, titlePipeNames
     DEFINE VRAM PLETTER NAME_TAB_XY(0,3), 320, titlePipeNamesPletter
 
     #addr = #VDP_COLOR_TAB1 + 32 * 8
