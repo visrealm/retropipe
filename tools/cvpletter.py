@@ -1,72 +1,116 @@
 import re
 import sys
-import subprocess
-import pathlib
 import os
+import subprocess
+from pathlib import Path
+from collections import OrderedDict
 
-def extract_bytes_from_line(line):
-    match = re.search(r'DATA\s+BYTE\s+(.*)', line, re.IGNORECASE)
-    if not match:
-        return []
-    byte_strs = match.group(1).split(',')
-    return [int(b.strip().lstrip('$'), 16) if b.strip().startswith('$') 
-            else int(b.strip(), 16) if b.strip().lower().startswith('0x') 
-            else int(b.strip()) for b in byte_strs]
+SCRIPT_DIR = Path(__file__).parent.resolve()
+PLETTER_EXE = SCRIPT_DIR / "cvbasic" / "pletter.exe"
 
-def convert_cvbasic_to_bin(input_path, bin_path):
-    with open(input_path, 'r') as infile:
-        output_bytes = []
-        for line in infile:
-            line = line.strip()
-            if not line or line.startswith("'"):
+def extract_labels_and_data(bas_path):
+    label = None
+    labels = OrderedDict()
+    data_accum = []
+
+    with open(bas_path, 'r') as f:
+        for line in f:
+            stripped = line.strip()
+
+            if not stripped or stripped.startswith("'"):
                 continue
-            output_bytes.extend(extract_bytes_from_line(line))
-    with open(bin_path, 'wb') as outfile:
-        outfile.write(bytearray(output_bytes))
-    print(f"[✓] Extracted {len(output_bytes)} bytes to {bin_path}")
+
+            # Label detection (e.g., labelName:)
+            if re.match(r'^[a-zA-Z_][\w]*\s*:$', stripped):
+                if label and data_accum:
+                    labels[label] = data_accum
+                label = stripped[:-1].strip()
+                data_accum = []
+                continue
+
+            # DATA BYTE detection
+            match = re.search(r'DATA\s+BYTE\s+(.*)', stripped, re.IGNORECASE)
+            if match and label:
+                bytes_str = match.group(1).split(',')
+                for b in bytes_str:
+                    b = b.strip()
+                    if b.startswith('$'):
+                        data_accum.append(int(b[1:], 16))
+                    elif b.lower().startswith('0x'):
+                        data_accum.append(int(b, 16))
+                    else:
+                        data_accum.append(int(b))
+    
+    if label and data_accum:
+        labels[label] = data_accum
+
+    return labels
+
+def write_bin(filename, data):
+    with open(filename, 'wb') as f:
+        f.write(bytearray(data))
+    print(f"[✓] Wrote {filename} ({len(data)} bytes)")
 
 def run_pletter(input_bin, output_bin):
-    print(f"[~] Running pletter.exe: {input_bin} → {output_bin}")
-    script_dir = pathlib.Path(__file__).parent.resolve()
-    pletter_path = script_dir / 'cvbasic' / 'pletter.exe'
-
-    result = subprocess.run([str(pletter_path), input_bin, output_bin], capture_output=True, text=True)
+    result = subprocess.run([str(PLETTER_EXE), str(input_bin), str(output_bin)],
+                            capture_output=True, text=True)
     if result.returncode != 0:
-        print("❌ Pletter compression failed:")
-        print(result.stderr)
-        sys.exit(1)
-    print(f"[✓] Compressed output written to {output_bin}")
+        raise RuntimeError(f"❌ Pletter compression failed for {input_bin}:\n{result.stderr}")
+    print(f"[✓] Compressed {input_bin.name} → {output_bin.name}")
 
-def write_bas_from_bin(bin_path, bas_path, label='pletterFont'):
-    with open(bin_path, 'rb') as f:
-        data = f.read()
-    
-    with open(bas_path, 'w') as out:
-        out.write(f"{label}:\n")
+def write_pletter_bas(bas_path, data, label):
+    with open(bas_path, 'w') as f:
+        f.write(f"{label}:\n")
         for i in range(0, len(data), 8):
             line = ', '.join(f"${b:02x}" for b in data[i:i+8])
-            out.write(f"    DATA BYTE {line}\n")
-    print(f"[✓] Generated {len(data)} bytes in {bas_path}")
+            f.write(f"    DATA BYTE {line}\n")
+    print(f"[✓] Wrote {bas_path.name} ({len(data)} bytes)")
 
-def derive_filenames(input_bas):
-    base = os.path.splitext(input_bas)[0]
-    return (
-        f"{base}.bin",           # intermediate raw binary
-        f"{base}.pletter.bin",   # compressed binary
-        f"{base}.pletter.bas"    # final CVBasic output
-    )
+def generate_all(bas_input):
+    base = Path(bas_input).stem
+    base_dir = Path(bas_input).parent.resolve()
+    labels_data = extract_labels_and_data(bas_input)
+
+    master_includes = []
+
+    for label, data in labels_data.items():
+        bin_file = base_dir / f"{base}.{label}.bin"
+        plet_bin = base_dir / f"{base}.{label}.pletter.bin"
+        plet_bas = base_dir / f"{base}.{label}.pletter.bas"
+
+        # Write raw bin
+        write_bin(bin_file, data)
+
+        # Run pletter.exe
+        run_pletter(bin_file, plet_bin)
+
+        # Read pletter.bin and write .bas
+        with open(plet_bin, 'rb') as f:
+            compressed = f.read()
+        write_pletter_bas(plet_bas, compressed, label)
+
+        # Include line for master file
+        master_includes.append(f"{label}:\n#include \"{plet_bas.name}\"\n")
+
+    master_file = base_dir / f"{base}.pletter_include.bas"
+    with open(master_file, 'w') as f:
+        f.writelines(master_includes)
+    print(f"\n[✓] Final include file written: {master_file.name}")
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python cvbasic_pletter_pack.py <input.bas>")
+        print("Usage: python cvbasic_pletter_labels.py <input.bas>")
         sys.exit(1)
 
-    input_bas = sys.argv[1]
-    raw_bin, compressed_bin, output_bas = derive_filenames(input_bas)
+    if not PLETTER_EXE.exists():
+        print(f"❌ Can't find pletter.exe at {PLETTER_EXE}")
+        sys.exit(1)
 
-    convert_cvbasic_to_bin(input_bas, raw_bin)
-    run_pletter(raw_bin, compressed_bin)
-    write_bas_from_bin(compressed_bin, output_bas)
+    try:
+        generate_all(sys.argv[1])
+    except Exception as e:
+        print(str(e))
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
