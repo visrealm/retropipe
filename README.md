@@ -14,6 +14,10 @@ Not complete. This is a work in progress.
 
 Can be compiled for other targets supported by CVBasic too.
 
+### Play online
+
+You can play the latest released version for the TI-99/4A online courtesy of JS99'er: [RetroPIPE v0.1.1 on JS99'er](https://js99er.net/#/?cartUrl=https:%2F%2Fgithub.com%2Fvisrealm%2Fretropipe%2Freleases%2Fdownload%2Fv0.1.1%2Fretropipe_v0-1_ti99_8.bin)
+
 ### Video
 
 <p align="left"><img src="img/retropipe.gif" alt="RetroPIPE"></p>
