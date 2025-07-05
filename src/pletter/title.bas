@@ -10,7 +10,7 @@
 ' https://github.com/visrealm/retropipe
 
 
-titleLogo:
+titleLogo: ' these go at 96
     DATA BYTE $00, $03, $07, $0f, $1f, $3f, $3f, $3f ' 96
     DATA BYTE $7f, $7f, $7f, $7f, $7f, $7f, $7f, $7f
     DATA BYTE $7f, $7f, $7f, $7f, $7f, $7f, $7f, $7f

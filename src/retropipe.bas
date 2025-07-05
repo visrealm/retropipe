@@ -252,7 +252,7 @@ main:
 	DEFINE SPRITE CURSOR_SPRITE_PATT_ID, 1, cursorSprites
 	DEFINE SPRITE PLETTER SPILL_SPRITE_PATT_ID, 6, spillPattPletter
 
-	currentLevel = 7
+	currentLevel = 1
 	#score = 0
 
 	WHILE 1

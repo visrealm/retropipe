@@ -1,10 +1,13 @@
-# --------------------------------------------------
-# Project: retropipe
-# Purpose: Converts raw CVBasic DATA sections into Pletter-compressed chunks.
-# Author:  Troy Schrapel
-# License: MIT
-# Repo:    https://github.com/visrealm/retropipe
-# --------------------------------------------------
+# cvpletter.py
+#
+# Converts raw CVBasic DATA sections into Pletter-compressed chunks.
+#
+# Copyright (c) 2025 Troy Schrapel
+#
+# This code is licensed under the MIT license
+#
+# https://github.com/visrealm/retropipe
+#
 
 import re
 import sys
@@ -13,129 +16,133 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 # Determine script directory and path to pletter.exe
-SCRIPT_DIR = Path(__file__).parent.resolve()
-PLETTER_EXE = SCRIPT_DIR / 'cvbasic' / 'pletter.exe'
+scriptDir = Path(__file__).parent.resolve()
+PLETTER_EXE = scriptDir / 'cvbasic' / 'pletter.exe'
 
-def extract_labels_and_data(bas_path):
+def extractLabelsAndData(basPath):
     """Parses a .bas file and extracts labeled DATA BYTE sequences."""
-    label = None
-    labels = {}
-    data_accum = []
+    currentLabel = None
+    labelDataMap = {}
+    dataBuffer = []
 
-    with open(bas_path, 'r') as f:
+    with open(basPath, 'r') as f:
         for line in f:
             stripped = line.strip()
 
             if not stripped or stripped.startswith("'"):
-                continue  # Skip empty and comment lines
+                continue  # skip empty and comment lines
 
-            # Detect label declarations (e.g., LabelName:)
-            if re.match(r'^[a-zA-Z_][\w]*\s*:*$', stripped):
-                if label and data_accum:
-                    labels[label] = data_accum
-                label = stripped[:-1]
-                data_accum = []
+            # detect label declarations (e.g., LabelName:)
+            codeOnly = stripped.split("'", 1)[0].strip()
+            if re.match(r'^[a-zA-Z_][\w]*\s*:$', codeOnly):
+
+                if currentLabel and dataBuffer:
+                    labelDataMap[currentLabel] = dataBuffer
+                currentLabel = codeOnly[:-1]
+                dataBuffer = []
                 continue
 
-            # Remove comments and extract DATA BYTE declarations
-            code_only = stripped.split("'", 1)[0].strip()
-            match = re.search(r'DATA\s+BYTE\s+(.*)', code_only, re.IGNORECASE)
-            if match and label:
-                bytes_str = match.group(1).split(',')
-                for b in bytes_str:
-                    b = b.strip()
-                    if b.startswith('$'):
-                        data_accum.append(int(b[1:], 16))
-                    elif b.lower().startswith('0x'):
-                        data_accum.append(int(b, 16))
+            # remove comments and extract DATA BYTE declarations
+            match = re.search(r'DATA\s+BYTE\s+(.*)', codeOnly, re.IGNORECASE)
+            if match and currentLabel:
+                byteValues = match.group(1).split(',')
+                for byte in byteValues:
+                    byte = byte.strip()
+                    if byte.startswith('$'):
+                        dataBuffer.append(int(byte[1:], 16))
+                    elif byte.lower().startswith('0x'):
+                        dataBuffer.append(int(byte, 16))
                     else:
-                        data_accum.append(int(b))
+                        dataBuffer.append(int(byte))
 
-    if label and data_accum:
-        labels[label] = data_accum
+    if currentLabel and dataBuffer:
+        labelDataMap[currentLabel] = dataBuffer
 
-    return labels
+    return labelDataMap
 
-def compress_data_via_pletter(data, tempdir, label):
-    """Writes data to disk, compresses it via pletter.exe, and reads back output bytes."""
-    bin_path = tempdir / f"{label}.bin"
-    plet_path = tempdir / f"{label}.pletter.bin"
+def compressDataViaPletter(data, tempDir, label):
+    """writes data to disk, compresses it via pletter.exe, and reads back output bytes."""
+    binPath = tempDir / f"{label}.bin"
+    pletterPath = tempDir / f"{label}.pletter.bin"
 
-    with open(bin_path, 'wb') as f:
+    with open(binPath, 'wb') as f:
         f.write(bytearray(data))
 
-    result = subprocess.run([str(PLETTER_EXE), str(bin_path), str(plet_path)],
+    result = subprocess.run([str(PLETTER_EXE), str(binPath), str(pletterPath)],
                             capture_output=True, text=True)
 
     if result.returncode != 0:
         raise RuntimeError(f"[✗] Pletter compression failed for {label}:\n{result.stderr}")
 
-    with open(plet_path, 'rb') as f:
+    with open(pletterPath, 'rb') as f:
         return list(f.read())
 
-def write_final_bas(input_bas, bas_output, compressed_blocks, source_sizes):
-    """Generates the output .pletter.bas with compressed data blocks."""
-    
-    source_bytes = 0
-    compressed_bytes = 0
-    
-    with open(bas_output, 'w') as f:
-        bas_output = Path(bas_output).name
+def writeFinalBas(inputBas, basOutputPath, compressedBlocks, sourceSizes):
+    """generates the output .pletter.bas with compressed data blocks."""
+
+    totalSourceBytes = 0
+    totalCompressedBytes = 0
+    basOutputFile = Path(basOutputPath).name
+
+    with open(basOutputPath, 'w') as f:
         f.write("' ====================================================\n")
         f.write("' This file was generated using cvpletter.py\n")
         f.write("' \n")
         f.write("' Copyright (c) 2025 Troy Schrapel (visrealm)\n")
         f.write("' \n")
-        f.write(f"' source: {input_bas}\n")
-        f.write(f"' cmd:    python cvpletter.py {input_bas}\n")
-        f.write(f"' output: {bas_output}\n")
+        f.write(f"' source: {inputBas}\n")
+        f.write(f"' cmd:    python cvpletter.py {inputBas}\n")
+        f.write(f"' output: {basOutputFile}\n")
         f.write("' \n")
         f.write("' ====================================================\n")
         f.write("' WARNING! Do NOT edit this file. Edit source file\n")
         f.write("' ====================================================\n\n")
-        
-        for label, compressed in compressed_blocks.items():
-            source_bytes += source_sizes[label]
-            compressed_bytes += len(compressed)
-            f.write(f"  {label}Pletter: ' source: {source_sizes[label]} bytes. compressed: {len(compressed)} bytes\n")
-            for i in range(0, len(compressed), 8):
+
+        for label, compressed in compressedBlocks.items():
+            inSize = sourceSizes[label]
+            outSize = len(compressed)
+            totalSourceBytes += inSize
+            totalCompressedBytes += outSize
+
+            f.write(f"  {label}Pletter: ' source: {inSize} bytes. compressed: {outSize} bytes\n")
+            for i in range(0, outSize, 8):
                 group = compressed[i:i+8]
                 line = ', '.join(f"${b:02x}" for b in group)
                 f.write(f"    DATA BYTE {line}\n")
             f.write("\n")
-            print(f"  {label + "Pletter:":<25} - in: {str(source_sizes[label]) + "B":>6} - out: {str(len(compressed)) + "B":>6} - saved: {str(source_sizes[label] - len(compressed))+"B":>6}")
 
+            print(f"  {label + 'Pletter:':<25} - in: {str(inSize) + 'B':>6} - out: {str(outSize) + 'B':>6} - saved: {str(inSize - outSize)+'B':>6}")
 
-    print(f"{bas_output:<27} - in: {str(source_bytes) + "B":>6} - out: {str(compressed_bytes) + "B":>6} - saved: {str(source_bytes - compressed_bytes)+ "B":>6}\n")
+    print(f"{basOutputFile:<27} - in: {str(totalSourceBytes) + 'B':>6} - out: {str(totalCompressedBytes) + 'B':>6} - saved: {str(totalSourceBytes - totalCompressedBytes)+ 'B':>6}\n")
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python cvbasic_pletter_inline.py <input.bas>")
+        print("Usage: python cvpletter.py <input.bas>")
         sys.exit(1)
 
-    input_bas = Path(sys.argv[1])
-    if not input_bas.exists():
-        print(f"[X] File not found: {input_bas}")
+    inputBas = Path(sys.argv[1])
+    if not inputBas.exists():
+        print(f"[X] File not found: {inputBas}")
         sys.exit(1)
 
     if not PLETTER_EXE.exists():
         print(f"[X] Missing pletter.exe at: {PLETTER_EXE}")
         sys.exit(1)
 
-    print(f"Processing {input_bas}...")
+    print(f"Processing {inputBas}...")
 
-    labels_data = extract_labels_and_data(input_bas)
-    compressed_blocks = {}
-    source_sizes = {}
+    labelsData = extractLabelsAndData(inputBas)
+    compressedBlocks = {}
+    sourceSizes = {}
 
     with TemporaryDirectory() as tmp:
-        tempdir = Path(tmp)
-        for label, data in labels_data.items():
-            compressed_blocks[label] = compress_data_via_pletter(data, tempdir, label)
-            source_sizes[label] = len(data)
+        tempDir = Path(tmp)
+        for label, data in labelsData.items():
+            compressedBlocks[label] = compressDataViaPletter(data, tempDir, label)
+            sourceSizes[label] = len(data)
 
-    output_bas = Path.cwd() / f"{input_bas.stem}.pletter.bas"
-    write_final_bas(input_bas, output_bas, compressed_blocks, source_sizes)
+    outputBasPath = Path.cwd() / f"{inputBas.stem}.pletter.bas"
+    writeFinalBas(inputBas, outputBasPath, compressedBlocks, sourceSizes)
 
 if __name__ == '__main__':
     main()
