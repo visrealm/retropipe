@@ -1,13 +1,13 @@
 '
-' Project: pico9918
+' Project: retropipe
 '
-' PICO9918 Configurator
+' Common (visrealm) VDP utilities
 '
-' Copyright (c) 2024 Troy Schrapel
+' Copyright (c) 2025 Troy Schrapel
 '
 ' This code is licensed under the MIT license
 '
-' https://github.com/visrealm/pico9918
+' https://github.com/visrealm/retropipe
 '
 
 ' VDP constants

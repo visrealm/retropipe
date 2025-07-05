@@ -1,3 +1,14 @@
+'
+' Project: retropipe
+'
+' RetroPIPE - Pipe Dream clone for retro computers
+'
+' Copyright (c) 2025 Troy Schrapel
+'
+' This code is licensed under the MIT license
+'
+' https://github.com/visrealm/retropipe
+'
 
 CONST SHOW_TITLE = 1
 
@@ -85,7 +96,7 @@ CONST FALSE = 0
 CONST TRUE  = -1
 
 ' ==========================================
-' GLOBALS
+' GLOBALS ( I guess everything is global :D )
 ' ------------------------------------------
 DIM chute(CHUTE_SIZE + 1)
 DIM game(PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT)
@@ -134,6 +145,7 @@ GOTO main
 ' ------------------------------------------
 include "vdp-utils.bas"
 include "input.bas"
+include "tiles.bas"
 
 CONST #SCORE_VRAM_ADDR		= #VDP_FREE_START
 
@@ -160,7 +172,7 @@ main:
 
 	' font patterns - write to each bank
 	FOR #I = $0100 TO $1100 STEP $0800
-        DEFINE VRAM PLETTER #I, $300, font
+        DEFINE VRAM PLETTER #I, $300, fontPletter
     NEXT #I
 
 	FOR I = 32 TO 127
@@ -172,7 +184,7 @@ main:
 	GOSUB titleScreen
 
 	FOR #I = $0100 TO $1100 STEP $0800
-        DEFINE VRAM PLETTER #I, $300, font
+        DEFINE VRAM PLETTER #I, $300, fontPletter
     NEXT #I
 
 	FOR I = 0 TO 254
@@ -839,7 +851,7 @@ renderCursor: PROCEDURE
 	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = VDP_MED_RED
 	IF gameState = GAME_STATE_ENDED THEN
 		 color = VDP_TRANSPARENT
-		 spriteY = 0
+		 spriteY = -24
 	END IF
 
 	SPRITE CURSOR_SPRITE_ID + 0, spriteY, spriteX, CURSOR_SPRITE_PATT_ID + 0, color
@@ -853,6 +865,7 @@ renderCursor: PROCEDURE
 include "title.bas"
 #endif
 
-include "font.bas"
+include "font.pletter.bas"
 include "patterns.bas"
+include "lookups.bas"
 
