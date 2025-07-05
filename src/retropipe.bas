@@ -202,9 +202,10 @@ main:
 	' title / logo patterns
     DEFINE CHAR PLETTER 0, 24, logoTopPletter
 
-	' tile patterns and colors
     DEFINE CHAR PLETTER 128, 30, gridPletter
-    DEFINE COLOR 128, 18, gridColor
+    DEFINE COLOR PLETTER 128, 18, gridColorPletter
+ 
+	' tile patterns and colors
 	FOR I = 137 TO 175
 	    DEFINE COLOR I, 1, baseColor
 	NEXT I
@@ -598,6 +599,8 @@ flowTick: PROCEDURE
 		SPRITE 4, animSprY - 1, animSprX, 4, FLOW_COLOR
 	END IF
 
+	IF gameState = GAME_STATE_ENDED THEN GOSUB renderCursor
+
 	END
 
 ' generate dynamic sprite pattern data for H/V liquid flow
@@ -713,7 +716,8 @@ uiTick: PROCEDURE
 	END IF
 
 	' handle user input
-	delayFrames = 8
+	delayFrames = nextDelayFrames
+	nextDelayFrames = 4
 	IF NAV(NAV_OK) AND gameState <> GAME_STATE_ENDED THEN
 		tileId = game(cursorIndex)
 		IF (tileId AND CELL_LOCKED_FLAG) = 0 THEN
@@ -733,6 +737,7 @@ uiTick: PROCEDURE
 		GOSUB updateCursorPos
 	ELSE
 		delayFrames = 0
+		nextDelayFrames = 12
 
 		' help randomize a bit more
 		FOR I = 0 TO (cursorY + cursorX) AND 3
@@ -821,7 +826,7 @@ renderGameCell: PROCEDURE
 ' Render a game cell (any location)
 '   INPUTS: g_type, nameX, nameY
 ' ------------------------------------------
-renderCell: PROCEDURE
+renderCell: PROCEDURE 
 	index = g_type * 9
 
 	#addr = NAME_TAB_XY(nameX, nameY)

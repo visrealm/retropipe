@@ -39,3 +39,9 @@
     DATA BYTE $c1, $81, $01, $46, $00, $00, $cf, $00
     DATA BYTE $ff, $ff, $ff, $ff, $fc
 
+  gridColorPletter: ' source: 72 bytes. compressed: 25 bytes
+    DATA BYTE $1f, $45, $36, $00, $15, $00, $36, $47
+    DATA BYTE $75, $00, $fc, $16, $3d, $15, $75, $9f
+    DATA BYTE $17, $74, $8f, $16, $75, $ff, $ff, $ff
+    DATA BYTE $fc
+

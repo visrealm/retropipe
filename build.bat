@@ -170,8 +170,8 @@ echo ---------------------------------------------------------------------
 set BASENAME=retropipe_%VERSION%_sc3000
 cvbasic --sg1000 retropipe.bas %ASMDIR%\%BASENAME%.asm %LIBPATH%
 if %errorlevel% neq 0 exit /b %errorlevel%
-gasm80 %ASMDIR%\%BASENAME%.asm -o %BUILDDIR%\%BASENAME%.rom
-echo Output: build\%BASENAME%.rom
+gasm80 %ASMDIR%\%BASENAME%.asm -o %BUILDDIR%\%BASENAME%.sg
+echo Output: build\%BASENAME%.sg
 
 
 :: CreatiVision
