@@ -27,8 +27,35 @@
     DATA BYTE $20, $8e, $1f, $f0, $fe, $0b, $aa, $1c
     DATA BYTE $24, $25, $42, $ff, $ff, $ff, $ff, $c0
 
-  cursorSpritesPletter: ' source: 32 bytes. compressed: 17 bytes
-    DATA BYTE $06, $ff, $ff, $c0, $e5, $00, $0d, $37
-    DATA BYTE $00, $03, $2f, $00, $0d, $ff, $ff, $ff
-    DATA BYTE $fc
+  cursorSpritesPletter: ' source: 128 bytes. compressed: 29 bytes
+    DATA BYTE $06, $ff, $ff, $c0, $8d, $00, $00, $f3
+    DATA BYTE $00, $6b, $1d, $25, $7e, $1f, $9a, $19
+    DATA BYTE $03, $6f, $00, $db, $1f, $7a, $1d, $df
+    DATA BYTE $3f, $ff, $ff, $ff, $f8
+
+  crackPattPletter: ' source: 128 bytes. compressed: 66 bytes
+    DATA BYTE $1a, $00, $0f, $00, $04, $03, $00, $63
+    DATA BYTE $00, $80, $40, $70, $0c, $08, $04, $93
+    DATA BYTE $1f, $02, $03, $08, $78, $1f, $60, $10
+    DATA BYTE $7c, $10, $0f, $30, $f0, $1f, $18, $20
+    DATA BYTE $f3, $34, $1c, $2a, $90, $1f, $08, $43
+    DATA BYTE $14, $11, $82, $41, $40, $50, $1f, $24
+    DATA BYTE $42, $30, $42, $80, $59, $23, $24, $3c
+    DATA BYTE $44, $48, $1f, $3f, $22, $41, $ff, $ff
+    DATA BYTE $ff, $f0
+
+  explodePattPletter: ' source: 192 bytes. compressed: 98 bytes
+    DATA BYTE $1b, $00, $06, $00, $01, $00, $02, $00
+    DATA BYTE $e2, $00, $40, $02, $6f, $80, $53, $0f
+    DATA BYTE $1c, $20, $05, $59, $0e, $20, $d9, $20
+    DATA BYTE $02, $a8, $3c, $0a, $2d, $00, $09, $01
+    DATA BYTE $e0, $1f, $48, $20, $04, $40, $3c, $10
+    DATA BYTE $80, $1d, $05, $01, $04, $10, $42, $10
+    DATA BYTE $14, $34, $24, $24, $10, $5b, $10, $07
+    DATA BYTE $2e, $1f, $84, $28, $5a, $4b, $12, $04
+    DATA BYTE $14, $4c, $8c, $0b, $04, $41, $1e, $75
+    DATA BYTE $08, $10, $04, $09, $18, $08, $20, $02
+    DATA BYTE $2b, $04, $b7, $6c, $3a, $8e, $40, $88
+    DATA BYTE $23, $be, $50, $76, $ef, $12, $ff, $ff
+    DATA BYTE $ff, $fc
 

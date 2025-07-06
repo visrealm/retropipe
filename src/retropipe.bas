@@ -68,9 +68,22 @@ CONST GAME_STATE_ENDED   = 2
 CONST GAME_START_DELAY_SECONDS = 10
 
 CONST CURSOR_SPRITE_ID         = 0
+CONST FLOW_SPRITE_ID           = 4
+CONST SPILL_SPRITE_ID          = FLOW_SPRITE_ID
+CONST CRACK_SPRITE_ID          = 5
+CONST EXPLODE_SPRITE_ID        = 6
+CONST EXPLODE_SPRITE_ID_CNT    = 4
+
 CONST CURSOR_SPRITE_PATT_ID    = 0
-CONST SPILL_SPRITE_PATT_ID     = 2
-CONST SPILL_SPRITE_COUNT  = 6
+CONST CURSOR_SPRITE_COUNT      = 4
+CONST FLOW_SPRITE_PATT_ID      = CURSOR_SPRITE_PATT_ID + CURSOR_SPRITE_COUNT
+CONST FLOW_SPRITE_COUNT        = 1
+CONST SPILL_SPRITE_PATT_ID     = FLOW_SPRITE_PATT_ID + FLOW_SPRITE_COUNT
+CONST SPILL_SPRITE_COUNT       = 6
+CONST CRACK_SPRITE_PATT_ID     = SPILL_SPRITE_PATT_ID + SPILL_SPRITE_COUNT
+CONST CRACK_SPRITE_COUNT       = 4
+CONST EXPLODE_SPRITE_PATT_ID   = CRACK_SPRITE_PATT_ID + CRACK_SPRITE_COUNT
+CONST EXPLODE_SPRITE_COUNT     = 6
 
 CONST POINTS_BUILD   		= 100
 CONST POINTS_REPLACE_DEDUCT = 50
@@ -144,6 +157,7 @@ CONST FLOW_COLOR = VDP_MED_GREEN
 ' ACTUAL ENTRY POINT
 ' ------------------------------------------
 main:
+	vdpR1Flags = $02
     ' what are we working with?
 '    GOSUB vdpDetect
 	'VDP_REG(50) = $80  ' reset VDP registers to boot values
@@ -238,9 +252,11 @@ main:
 		PUT_XY(4, I), 183
 	NEXT I
 
-	' cursor sprites
-	DEFINE SPRITE PLETTER CURSOR_SPRITE_PATT_ID, 1, cursorSpritesPletter
-	DEFINE SPRITE PLETTER SPILL_SPRITE_PATT_ID, 6, spillPattPletter
+	' sprite patterns
+	DEFINE SPRITE PLETTER CURSOR_SPRITE_PATT_ID, CURSOR_SPRITE_COUNT, cursorSpritesPletter
+	DEFINE SPRITE PLETTER SPILL_SPRITE_PATT_ID, SPILL_SPRITE_COUNT, spillPattPletter
+	DEFINE SPRITE PLETTER CRACK_SPRITE_PATT_ID, CRACK_SPRITE_COUNT, crackPattPletter
+	DEFINE SPRITE PLETTER EXPLODE_SPRITE_PATT_ID, EXPLODE_SPRITE_COUNT, explodePattPletter
 
 	currentLevel = 1
 	#score = 0
@@ -254,7 +270,6 @@ pipeGame: PROCEDURE
 	cursorY = 3
 	remainingPipes = 13 + currentLevel
 	IF remainingPipes > 24 THEN remainingPipes = 24
-	vdpR1Flags = 0
 
 	hoverFfwd = 0
 
@@ -275,14 +290,15 @@ pipeGame: PROCEDURE
 	GOSUB renderFfwdButton
 	GOSUB updateCursorPos
 
-	SPRITE 4, 0, 0, 4, VDP_TRANSPARENT
+
+	SPRITE FLOW_SPRITE_ID, 0, 0, FLOW_SPRITE_PATT_ID * 4, VDP_TRANSPARENT
 
 	' render chute bottom
 	DEFINE VRAM NAME_TAB_XY(0, PLAYFIELD_Y + CHUTE_SIZE * 3), 5, chuteBottomNames
 
 	' clear dynamic flow sprite patterns
 	FILL_BUFFER(0)
-	DEFINE VRAM #VDP_SPRITE_PATT + 8 * 8, 8, VARPTR rowBuffer(0)
+	DEFINE VRAM #VDP_SPRITE_PATT + FLOW_SPRITE_PATT_ID * 32, 32, VARPTR rowBuffer(0)
 
 	FOR I = 0 TO CHUTE_SIZE - 1
 		chute(I) = RANDOM(7) + 2
@@ -331,7 +347,7 @@ pipeGame: PROCEDURE
 	gameState = GAME_STATE_BUILDING
 	gameFrame = 0
 	gameSeconds = 0
-	spillSpriteId = 8
+	spillSpriteId = SPILL_SPRITE_PATT_ID
 	currentStartDelay = GAME_START_DELAY_SECONDS - currentLevel
 	IF currentStartDelay < 5 THEN currentStartDelay = 5
 
@@ -354,8 +370,6 @@ pipeGame: PROCEDURE
 			IF gameSeconds < 2 THEN
 				chuteOffset = chuteOffset - 1
 				IF remainingPipes THEN
-					vdpR1Flags = $02
-					VDP_ENABLE_INT
 					GOSUB spillTick
 				END IF
 				GOSUB renderChute
@@ -392,6 +406,8 @@ levelEnd: PROCEDURE
 	END
 
 replaceTick: PROCEDURE
+
+
 	IF gameFrame - replaceFrame > 30 THEN
 		isReplacing = FALSE
 		tileId = 0
@@ -404,11 +420,11 @@ replaceTick: PROCEDURE
 ' Handle liquid spill animation
 ' ------------------------------------------
 spillTick: PROCEDURE
-	IF (gameFrame AND 7) OR (spillSpriteId >= 28) THEN RETURN
+	IF (gameFrame AND 7) OR (spillSpriteId >= SPILL_SPRITE_PATT_ID + SPILL_SPRITE_COUNT - 1) THEN RETURN
 
-	spillSpriteId = spillSpriteId + 4
+	spillSpriteId = spillSpriteId + 1
 
-	SPRITE 4, lastAnimSprY - .offsetY(lastFlowDir), lastAnimSprX - .offsetX(lastFlowDir), spillSpriteId, FLOW_COLOR
+	SPRITE SPILL_SPRITE_ID, lastAnimSprY - .offsetY(lastFlowDir), lastAnimSprX - .offsetX(lastFlowDir), spillSpriteId * 4, FLOW_COLOR
 	END
 
 .offsetX:
@@ -597,14 +613,14 @@ flowTick: PROCEDURE
 			flowAnimBuffer(I) = 0
 		NEXT I
 
-		DEFINE VRAM #VDP_SPRITE_PATT + 4 * 8, 8, VARPTR flowAnimBuffer(0)
-		SPRITE 4, animSprY - 1, animSprX, 4, VDP_TRANSPARENT
+		DEFINE VRAM #VDP_SPRITE_PATT + FLOW_SPRITE_PATT_ID * 32, 8, VARPTR flowAnimBuffer(0)
+		SPRITE FLOW_SPRITE_ID, animSprY - 1, animSprX, FLOW_SPRITE_PATT_ID * 4, VDP_TRANSPARENT
 	ELSE
 		animSprX = (animNameX + (currentSubTile AND 3)) * 8
 		animSprY = (animNameY + (currentSubTile / 32)) * 8
 
-		DEFINE VRAM #VDP_SPRITE_PATT + 4 * 8, 8, VARPTR flowAnimBuffer(0)
-		SPRITE 4, animSprY - 1, animSprX, 4, FLOW_COLOR
+		DEFINE VRAM #VDP_SPRITE_PATT + FLOW_SPRITE_PATT_ID * 32, 8, VARPTR flowAnimBuffer(0)
+		SPRITE FLOW_SPRITE_ID, animSprY - 1, animSprX, FLOW_SPRITE_PATT_ID * 4, FLOW_COLOR
 	END IF
 
 	IF gameState = GAME_STATE_ENDED THEN GOSUB renderCursor
@@ -900,10 +916,10 @@ renderCursor: PROCEDURE
 		 spriteY = -24
 	END IF
 
-	SPRITE CURSOR_SPRITE_ID + 0, spriteY, spriteX, CURSOR_SPRITE_PATT_ID + 0, color
-	SPRITE CURSOR_SPRITE_ID + 1, spriteY + CURSOR_SPREAD, spriteX, CURSOR_SPRITE_PATT_ID + 1, color
-	SPRITE CURSOR_SPRITE_ID + 2, spriteY, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 2, color
-	SPRITE CURSOR_SPRITE_ID + 3, spriteY + CURSOR_SPREAD, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 3, color
+	SPRITE CURSOR_SPRITE_ID + 0, spriteY, spriteX, CURSOR_SPRITE_PATT_ID + 0 * 4, color
+	SPRITE CURSOR_SPRITE_ID + 1, spriteY + CURSOR_SPREAD, spriteX, CURSOR_SPRITE_PATT_ID + 1 * 4, color
+	SPRITE CURSOR_SPRITE_ID + 2, spriteY, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 2 * 4, color
+	SPRITE CURSOR_SPRITE_ID + 3, spriteY + CURSOR_SPREAD, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 3 * 4, color
 	END
 
 renderFfwdButton: PROCEDURE

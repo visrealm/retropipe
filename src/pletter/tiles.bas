@@ -85,6 +85,7 @@ gridColor:
     DATA BYTE $15, $15, $15, $15, $15, $15, $15, $75
     DATA BYTE $75, $75, $75, $75, $75, $75, $75, $75
 
+' fast forward button (0 on lower 3rd)
 ffwdPatt:
     DATA BYTE $00, $1F, $20, $20, $20, $20, $20, $20     
     DATA BYTE $00, $FF, $00, $00, $88, $CC, $EE, $FF     
@@ -108,7 +109,6 @@ ffwdPattHover:
     DATA BYTE $3F, $3F, $3F, $3F, $3F, $1F, $1F, $0F     
     DATA BYTE $EE, $CC, $88, $00, $00, $FF, $FF, $FF     
     DATA BYTE $FC, $FC, $FC, $FC, $FC, $F8, $F8, $F0     
-
 
 ffwdColorHover:
     DATA BYTE $F4, $74, $74, $74, $74, $74, $74, $74     

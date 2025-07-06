@@ -27,8 +27,7 @@ CONST CELL_TILE_MASK   = $0f
 
 ' the location of these is computed from the CELL_ constants above
 ' cellNames + CELL_XXXX * 9
-cellNames:
-    ' grid
+cellNames:    ' grid
     DATA BYTE 128, 129, 130
     DATA BYTE 131, 132, 133
     DATA BYTE 134, 135, 136    
