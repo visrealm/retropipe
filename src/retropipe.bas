@@ -106,6 +106,8 @@ DIM currentIndexPattId
 DIM currentSpeed' 0, 1, 3, 7, 15 (inverse speed. actually frame delay)
 DIM levelSpeed
 DIM hoverFfwd
+DIM replaceFrame
+DIM isReplacing
 
 DIM #lastTileNameIndex
 
@@ -371,6 +373,7 @@ pipeGame: PROCEDURE
 		GOSUB uiTick
 		GOSUB logoTick
 		GOSUB scoreTick
+		IF isReplacing THEN GOSUB replaceTick
 		
 		gameFrame = gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
 		IF (gameFrame AND $3f) = 0 THEN	' very rough seconds. 64 ticks so will be slow at 50FPS
@@ -388,6 +391,14 @@ levelEnd: PROCEDURE
 	END IF
 	END
 
+replaceTick: PROCEDURE
+	IF gameFrame - replaceFrame > 30 THEN
+		isReplacing = FALSE
+		tileId = 0
+		GOSUB placeTile
+	END IF
+
+	END
 
 ' ==========================================
 ' Handle liquid spill animation
@@ -703,6 +714,8 @@ anims:
 ' ------------------------------------------
 uiTick: PROCEDURE
 
+	IF isReplacing THEN RETURN
+
 	' get user input
 	GOSUB updateNavInput
 	savedNav = savedNav OR g_nav
@@ -784,6 +797,10 @@ placeTile: PROCEDURE
 		
 		' test going negative
 		IF #score > 65485 then #score = 0
+
+		isReplacing = TRUE
+		replaceFrame = gameFrame
+		RETURN
 	ELSE
 		#score = #score + POINTS_BUILD
 	END IF
