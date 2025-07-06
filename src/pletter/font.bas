@@ -9,7 +9,7 @@
 '
 ' https://github.com/visrealm/retropipe
 
-font:
+font0:
     DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00 ' <SPACE$
     DATA BYTE $18, $18, $18, $18, $18, $00, $18, $00 ' !
     DATA BYTE $6C, $6C, $6C, $00, $00, $00, $00, $00 ' "
@@ -42,6 +42,7 @@ font:
     DATA BYTE $00, $00, $7E, $00, $7E, $00, $00, $00 ' =
     DATA BYTE $30, $18, $0C, $06, $0C, $18, $30, $00 ' >
     DATA BYTE $3C, $66, $0C, $18, $18, $00, $18, $00 ' ?
+font1:    
     DATA BYTE $7C, $C6, $DE, $DE, $DE, $C0, $7E, $00 ' @
     DATA BYTE $38, $6C, $C6, $C6, $FE, $C6, $C6, $00 ' A
     DATA BYTE $FC, $C6, $C6, $FC, $C6, $C6, $FC, $00 ' B
@@ -74,6 +75,7 @@ font:
     DATA BYTE $3C, $0C, $0C, $0C, $0C, $0C, $3C, $00 ' ]
     DATA BYTE $10, $38, $6C, $C6, $00, $00, $00, $00 ' ^
     DATA BYTE $00, $00, $00, $00, $00, $00, $00, $FF ' _
+font2:
     DATA BYTE $18, $24, $24, $18, $00, $00, $00, $00 ' ` 
     DATA BYTE $00, $00, $7C, $06, $7E, $C6, $7E, $00 ' a
     DATA BYTE $C0, $C0, $C0, $FC, $C6, $C6, $FC, $00 ' b

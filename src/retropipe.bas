@@ -61,6 +61,8 @@ CONST SUBTILE_BL = 64
 CONST SUBTILE_BC = 65
 CONST SUBTILE_BR = 66
 
+CONST FFWD_PATT_ID 		= 24
+
 CONST GAME_STATE_BUILDING = 0
 CONST GAME_STATE_FLOWING  = 1
 CONST GAME_STATE_ENDED   = 2
@@ -84,6 +86,9 @@ CONST CRACK_SPRITE_PATT_ID     = SPILL_SPRITE_PATT_ID + SPILL_SPRITE_COUNT
 CONST CRACK_SPRITE_COUNT       = 4
 CONST EXPLODE_SPRITE_PATT_ID   = CRACK_SPRITE_PATT_ID + CRACK_SPRITE_COUNT
 CONST EXPLODE_SPRITE_COUNT     = 6
+
+CONST LOADING_STRING_COUNT     = 10
+CONST LOADING_STRING_LEN       = 20
 
 CONST POINTS_BUILD   		= 100
 CONST POINTS_REPLACE_DEDUCT = 50
@@ -136,6 +141,9 @@ SIGNED scoreCurrentOffset, scoreDesiredOffset
 DIM savedNav
 DIM spillSpriteId
 
+CONST SLIDE_MODE = 1
+
+
 ' ==========================================
 ' ENTRY POINT
 ' ------------------------------------------
@@ -151,6 +159,22 @@ include "tiles.bas"
 CONST #SCORE_VRAM_ADDR		= #VDP_FREE_START
 
 CONST FLOW_COLOR = VDP_MED_GREEN
+
+DIM progressCount
+
+progressTick: PROCEDURE
+	VPOKE #addr, 31 : #addr = #addr + 1
+	progressCount = progressCount + 1
+	IF (progressCount AND 3) = 0 THEN
+		FILL_BUFFER(" ")
+		pun = RANDOM(LOADING_STRING_COUNT)
+		FOR I = 0 TO 21
+			rowBuffer(I) = loadingStrings(pun * LOADING_STRING_LEN + I)
+		NEXT I 
+		DEFINE VRAM #VDP_NAME_TAB1 + 22 * 32 + 12, 20, VARPTR rowBuffer(0)
+	END IF
+	END
+
 
 
 ' ==========================================
@@ -181,56 +205,88 @@ main:
 
 '	VDP_DISABLE_INT
 
-	DEFINE CHAR PLETTER 32, 60, fontPletter
-
+	DEFINE CHAR PLETTER 64, 32, font1Pletter
+	DEFINE CHAR PLETTER 32, 32, font0Pletter
+	
 	FOR I = 32 TO 127
 		DEFINE COLOR I, 1, fontColor
 	NEXT I
 
     DEFINE CHAR PLETTER 0, 24, logoTopPletter
-	DEFINE VRAM #VDP_NAME_TAB1, 12, logoNamesTop
-	DEFINE VRAM #VDP_NAME_TAB1 + 32, 12, logoNamesBottom
-
+	DEFINE VRAM #VDP_NAME_TAB1 + 22*32, 12, logoNamesTop
+	DEFINE VRAM #VDP_NAME_TAB1 + 23*32, 12, logoNamesBottom
+	DEFINE CHAR 31, 1, tilePiece	' remaining pipes
+	DEFINE COLOR 31, 1, tilePieceColor
 
 #if SHOW_TITLE
 	GOSUB titleScreen
+#endif
 
-	DEFINE CHAR PLETTER 32, 60, fontPletter
+	#addr = #VDP_NAME_TAB1 + (23 * 32) + 12
+	DEFINE CHAR 31, 1, tilePiece	' remaining pipes
 
+#if SHOW_TITLE
 	FOR I = 0 TO 254
 		DEFINE COLOR I, 1, defaultColor
 	NEXT I
-	FOR I = 24 TO 127
+	DEFINE COLOR 31, 1, tilePieceColor
+
+	GOSUB progressTick
+	DEFINE CHAR PLETTER 64, 32, font1Pletter
+	GOSUB progressTick
+	DEFINE CHAR PLETTER 32, 32, font0Pletter
+	GOSUB progressTick
+	DEFINE CHAR PLETTER 96, 32, font2Pletter
+	GOSUB progressTick
+
+	FOR I = 24 TO 30
 		DEFINE COLOR I, 1, fontColor
 	NEXT I
+
 	FOR I = 128 TO 254
 		DEFINE COLOR I, 1, defaultColor
 	NEXT I
 
+	GOSUB progressTick
+
 #endif
+
 
 
 	' title / logo patterns
 
     DEFINE CHAR PLETTER 128, 30, gridPletter
+
+	GOSUB progressTick
+
     DEFINE COLOR PLETTER 128, 18, gridColorPletter
- 
+
+	GOSUB progressTick
+
 	' tile patterns and colors
 	FOR I = 137 TO 175
 	    DEFINE COLOR I, 1, baseColor
 	NEXT I
+
+	GOSUB progressTick
+
     DEFINE CHAR PLETTER 158, 10, pipesPletter	' empty pipes
+
+	GOSUB progressTick
+
     DEFINE CHAR PLETTER 168, 10, pipesPletter	' full pipes
 
-	DEFINE CHAR 31, 1, tilePiece	' remaining pipes
-	DEFINE COLOR 31, 1, tilePieceColor
+	GOSUB progressTick
 
 	FOR I = 158 TO 167
 	    DEFINE COLOR I, 1, pipeColor
 	NEXT I
+	GOSUB progressTick
+
 	FOR I = 168 TO 177
 	    DEFINE COLOR I, 1, pipeColorGreen
 	NEXT I
+	GOSUB progressTick
 
 	' score patterns (dynamic rolling digits)
 	FOR I = 0 TO 4
@@ -238,6 +294,7 @@ main:
 		DEFINE VRAM #VDP_PATT_TAB1 + ((24 + I) * 8), 8, VARPTR digits(0)
 		'DEFINE COLOR 24 + I, 1, digitColor
 	NEXT I
+	GOSUB progressTick
 
 
 	' gamefield patterns
@@ -245,9 +302,10 @@ main:
 
 	' set up the name table
 	' ------------------------------
-
 	DEFINE VRAM NAME_TAB_XY(0, 0), 12, logoNamesTop
 	DEFINE VRAM NAME_TAB_XY(0, 1), 12, logoNamesBottom
+
+	GOSUB progressTick
 
 	CONST CHUTE_BOTTOM = PLAYFIELD_Y + CHUTE_SIZE * 3
 
@@ -256,15 +314,23 @@ main:
 		DEFINE VRAM NAME_TAB_XY(0, I), 5, chuteNames
 	NEXT I
 
+	GOSUB progressTick
+
 	FOR I = CHUTE_BOTTOM + 1 TO 23
 		PUT_XY(4, I), 183
 	NEXT I
 
+	GOSUB progressTick
+
 	' sprite patterns
 	DEFINE SPRITE PLETTER CURSOR_SPRITE_PATT_ID, CURSOR_SPRITE_COUNT, cursorSpritesPletter
+	GOSUB progressTick
 	DEFINE SPRITE PLETTER SPILL_SPRITE_PATT_ID, SPILL_SPRITE_COUNT, spillPattPletter
+	GOSUB progressTick
 	DEFINE SPRITE PLETTER CRACK_SPRITE_PATT_ID, CRACK_SPRITE_COUNT, crackPattPletter
+	GOSUB progressTick
 	DEFINE SPRITE PLETTER EXPLODE_SPRITE_PATT_ID, EXPLODE_SPRITE_COUNT, explodePattPletter
+	GOSUB progressTick
 
 	currentLevel = 1
 	#score = 0
@@ -310,6 +376,7 @@ pipeGame: PROCEDURE
 
 	FOR I = 0 TO CHUTE_SIZE - 1
 		chute(I) = RANDOM(7) + 2
+		'WAIT
 	NEXT I
 	chute(CHUTE_SIZE) = CELL_CLEAR
 
@@ -319,10 +386,15 @@ pipeGame: PROCEDURE
 
 	chuteOffset = 20
 
-	FOR I = 0 TO PLAYFIELD_HEIGHT * PLAYFIELD_WIDTH - 1
-		game(I) = CELL_GRID
-	NEXT I
-
+	IF SLIDE_MODE THEN
+		FOR I = 0 TO PLAYFIELD_HEIGHT * PLAYFIELD_WIDTH - 1
+			game(I) = RANDOM(6) + 2
+		NEXT I
+	ELSE
+		FOR I = 0 TO PLAYFIELD_HEIGHT * PLAYFIELD_WIDTH - 1
+			game(I) = CELL_CLEAR
+		NEXT I
+	END IF
 
 	' start tile position
 	currentTileX = RANDOM(PLAYFIELD_WIDTH - 2) + 1
@@ -360,7 +432,6 @@ pipeGame: PROCEDURE
 	IF currentStartDelay < 5 THEN currentStartDelay = 5
 
 	NAME_TABLE0
-	VDP_ENABLE_INT
 
 	' main game loop
 	WHILE 1
@@ -372,7 +443,7 @@ pipeGame: PROCEDURE
 			GOSUB flowTick
 		ELSEIF gameSeconds = currentStartDelay THEN
 			gameState = GAME_STATE_FLOWING
-			FOR J = 0 TO 5 : rowBuffer(J) = J : NEXT J
+			FOR J = 0 TO 5 : rowBuffer(J) = J + FFWD_PATT_ID : NEXT J
 			DEFINE VRAM NAME_TAB_XY(1, CHUTE_BOTTOM + 1), 3, VARPTR rowBuffer(0)
 			DEFINE VRAM NAME_TAB_XY(1, CHUTE_BOTTOM + 2), 3, VARPTR rowBuffer(3)
 		ELSEIF gameState = GAME_STATE_ENDED THEN
@@ -786,7 +857,7 @@ uiTick: PROCEDURE
 	' it again. unless the user releases all buttons, then we skip the delay
 	IF g_nav > 0 AND delayFrames > 0 THEN
 		delayFrames = delayFrames - 1
-		J = RANDOM(255)	' help randomize
+		J = RANDOM(g_nav)	' help randomize
 		RETURN
 	END IF
 
@@ -834,7 +905,7 @@ uiTick: PROCEDURE
 
 		' help randomize a bit more
 		FOR I = 0 TO (cursorY + cursorX) AND 3
-			J = RANDOM(255)
+			J = RANDOM(cursorY + cursorX)
 		NEXT I
 	END IF
 
@@ -975,14 +1046,27 @@ renderCursor: PROCEDURE
 
 renderFfwdButton: PROCEDURE
 	IF hoverFfwd THEN
-		DEFINE VRAM PLETTER #VDP_PATT_TAB3, 6 * 8, ffwdPattHoverPletter
-		DEFINE VRAM PLETTER #VDP_COLOR_TAB3, 6 * 8, ffwdColorHoverPletter
+		DEFINE VRAM PLETTER #VDP_PATT_TAB3 + (FFWD_PATT_ID * 8), 6 * 8, ffwdPattHoverPletter
+		DEFINE VRAM PLETTER #VDP_COLOR_TAB3 + (FFWD_PATT_ID * 8), 6 * 8, ffwdColorHoverPletter
 	ELSE
-		DEFINE VRAM PLETTER #VDP_PATT_TAB3, 6 * 8, ffwdPattPletter
-		DEFINE VRAM PLETTER #VDP_COLOR_TAB3, 6 * 8, ffwdColorPletter
+		DEFINE VRAM PLETTER #VDP_PATT_TAB3 + (FFWD_PATT_ID * 8), 6 * 8, ffwdPattPletter
+		DEFINE VRAM PLETTER #VDP_COLOR_TAB3 + (FFWD_PATT_ID * 8), 6 * 8, ffwdColorPletter
 	END IF
 	GOSUB updateCursorPos
 	END
+
+loadingStrings:
+	DATA BYTE "Unclogging logic    "
+	DATA BYTE "Routing pipe dreams "
+	DATA BYTE "Siphoning bits      "
+	DATA BYTE "Aligning elbows     "
+	DATA BYTE "Hydrating RAM       "
+	DATA BYTE "Valve check         "
+	DATA BYTE "Flow imminent       "
+	DATA BYTE "Parsing pipe logic  "
+	DATA BYTE "Pressurizing pixels "
+	DATA BYTE "Configuring couplers"
+
 
 #if SHOW_TITLE
 include "title.bas"
