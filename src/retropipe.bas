@@ -68,6 +68,7 @@ CONST GAME_STATE_FLOWING  = 1
 CONST GAME_STATE_ENDED   = 2
 
 CONST GAME_START_DELAY_SECONDS = 10
+CONST GAME_START_DELAY_SECONDS_SLIDE_MODE = 30
 
 CONST CURSOR_SPRITE_ID         = 0
 CONST FLOW_SPRITE_ID           = 4
@@ -164,15 +165,12 @@ DIM progressCount
 
 progressTick: PROCEDURE
 	VPOKE #addr, 31 : #addr = #addr + 1
-	progressCount = progressCount + 1
-	IF (progressCount AND 3) = 0 THEN
+	IF ((progressCount - 1) % 7) = 0 THEN
 		FILL_BUFFER(" ")
 		pun = RANDOM(LOADING_STRING_COUNT)
-		FOR I = 0 TO 21
-			rowBuffer(I) = loadingStrings(pun * LOADING_STRING_LEN + I)
-		NEXT I 
-		DEFINE VRAM #VDP_NAME_TAB1 + 22 * 32 + 12, 20, VARPTR rowBuffer(0)
+		DEFINE VRAM #VDP_NAME_TAB1 + 22 * 32 + 12, 20, VARPTR loadingStrings(pun * LOADING_STRING_LEN)
 	END IF
+	progressCount = progressCount + 1
 	END
 
 
@@ -222,6 +220,8 @@ main:
 	GOSUB titleScreen
 #endif
 
+    VDP_ENABLE_INT
+
 	#addr = #VDP_NAME_TAB1 + (23 * 32) + 12
 	DEFINE CHAR 31, 1, tilePiece	' remaining pipes
 
@@ -248,7 +248,6 @@ main:
 	NEXT I
 
 	GOSUB progressTick
-
 #endif
 
 
@@ -388,17 +387,17 @@ pipeGame: PROCEDURE
 
 	IF SLIDE_MODE THEN
 		FOR I = 0 TO PLAYFIELD_HEIGHT * PLAYFIELD_WIDTH - 1
-			game(I) = RANDOM(6) + 2
+			game(I) = RANDOM(7) + 2
 		NEXT I
 	ELSE
 		FOR I = 0 TO PLAYFIELD_HEIGHT * PLAYFIELD_WIDTH - 1
-			game(I) = CELL_CLEAR
+			game(I) = CELL_GRID
 		NEXT I
 	END IF
 
 	' start tile position
-	currentTileX = RANDOM(PLAYFIELD_WIDTH - 2) + 1
-	currentTileY = RANDOM(PLAYFIELD_HEIGHT - 2) + 1
+	currentTileX = RANDOM(PLAYFIELD_WIDTH - 3) + 2
+	currentTileY = RANDOM(PLAYFIELD_HEIGHT - 3) + 2
 	currentIndex = currentTileY * PLAYFIELD_WIDTH + currentTileX
 
 	animNameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
@@ -411,6 +410,12 @@ pipeGame: PROCEDURE
 	currentAnimStep = 8
 	currentFlowDir = I
 	game(currentIndex) = (CELL_PIPE_ST + I) OR CELL_LOCKED_FLAG
+
+	IF SLIDE_MODE THEN
+		emptyIndex = currentIndex + offsetForFlow2(I)
+		game(emptyIndex) = CELL_GRID
+	END IF
+
 	'game(15) = $81
 	'game(37) = $81
 
@@ -429,6 +434,8 @@ pipeGame: PROCEDURE
 	gameSeconds = 0
 	spillSpriteId = SPILL_SPRITE_PATT_ID
 	currentStartDelay = GAME_START_DELAY_SECONDS - currentLevel
+	IF SLIDE_MODE THEN currentStartDelay = currentStartDelay * 4
+
 	IF currentStartDelay < 5 THEN currentStartDelay = 5
 
 	NAME_TABLE0
@@ -878,9 +885,13 @@ uiTick: PROCEDURE
 			GOSUB renderFfwdButton
 		END IF
 	ELSEIF NAV(NAV_OK) AND gameState <> GAME_STATE_ENDED THEN
-		tileId = game(cursorIndex)
-		IF (tileId AND CELL_LOCKED_FLAG) = 0 THEN
-			GOSUB placeTile
+		IF SLIDE_MODE THEN
+			GOSUB slideTile			
+		ELSE
+			tileId = game(cursorIndex)
+			IF (tileId AND CELL_LOCKED_FLAG) = 0 THEN
+				GOSUB placeTile
+			END IF
 		END IF
 	ELSEIF NAV(NAV_RIGHT) AND cursorX < (PLAYFIELD_WIDTH - 1) THEN
 			cursorX = cursorX + 1
@@ -917,6 +928,21 @@ uiTick: PROCEDURE
 
 	' place and color the cursor
 	GOSUB renderCursor
+	END
+
+slideTile: PROCEDURE
+	IF NOT isValid THEN RETURN
+
+	temp = game(cursorIndex)
+	game(cursorIndex) = game(emptyIndex)
+	game(emptyIndex) = temp
+	g_cell = emptyIndex
+	g_type = game(emptyIndex)
+	GOSUB renderGameCell
+	emptyIndex = cursorIndex
+	g_cell = cursorIndex
+	g_type = game(cursorIndex)
+	GOSUB renderGameCell
 	END
 
 ' ==========================================
@@ -1031,8 +1057,26 @@ renderCursor: PROCEDURE
 	CONST CURSOR_SIZE   = 33
 	CONST CURSOR_SPREAD = CURSOR_SIZE - 16
 
-	IF gameFrame AND 8 THEN color = VDP_GREY ELSE color = VDP_WHITE 
+	IF gameFrame AND 8 THEN color = VDP_GREY ELSE color = VDP_WHITE
 	IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = VDP_MED_RED
+
+	IF SLIDE_MODE THEN
+		isValid = FALSE
+		IF color <> VDP_MED_RED THEN
+			cursorX = cursorIndex % PLAYFIELD_WIDTH
+			cursorY = cursorIndex / PLAYFIELD_WIDTH
+			FOR I = 0 TO 3
+				tempIndex = cursorIndex + offsetForFlow2(I)			
+				tempIndexX = tempIndex % PLAYFIELD_WIDTH
+				tempIndexY = tempIndex / PLAYFIELD_WIDTH
+				IF NOT (tempIndexX <> cursorX AND tempIndexY <> cursorY) THEN
+					IF game(tempIndex) = CELL_GRID THEN isValid = TRUE
+				END IF
+			NEXT I
+			IF isValid = FALSE THEN color = VDP_MED_RED
+		END IF
+	END IF
+
 	IF (gameState = GAME_STATE_ENDED) OR hoverFfwd THEN
 		 color = VDP_TRANSPARENT
 		 spriteY = -24
@@ -1044,6 +1088,9 @@ renderCursor: PROCEDURE
 	SPRITE CURSOR_SPRITE_ID + 3, spriteY + CURSOR_SPREAD, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 3 * 4, color
 	END
 
+' ==========================================
+' Render the fast forward button
+' ------------------------------------------
 renderFfwdButton: PROCEDURE
 	IF hoverFfwd THEN
 		DEFINE VRAM PLETTER #VDP_PATT_TAB3 + (FFWD_PATT_ID * 8), 6 * 8, ffwdPattHoverPletter
@@ -1056,16 +1103,16 @@ renderFfwdButton: PROCEDURE
 	END
 
 loadingStrings:
-	DATA BYTE "Unclogging logic    "
-	DATA BYTE "Routing pipe dreams "
-	DATA BYTE "Siphoning bits      "
-	DATA BYTE "Aligning elbows     "
-	DATA BYTE "Hydrating RAM       "
-	DATA BYTE "Valve check         "
-	DATA BYTE "Flow imminent       "
-	DATA BYTE "Parsing pipe logic  "
-	DATA BYTE "Pressurizing pixels "
-	DATA BYTE "Configuring couplers"
+	DATA BYTE "    UNCLOGGING LOGIC"
+	DATA BYTE " ROUTING PIPE DREAMS"
+	DATA BYTE "      SIPHONING BITS"
+	DATA BYTE "     ALIGNING ELBOWS"
+	DATA BYTE "       HYDRATING RAM"
+	DATA BYTE "         VALVE CHECK"
+	DATA BYTE "       FLOW IMMINENT"
+	DATA BYTE "  PARSING PIPE LOGIC"
+	DATA BYTE " PRESSURIZING PIXELS"
+	DATA BYTE "CONFIGURING COUPLERS"
 
 
 #if SHOW_TITLE
