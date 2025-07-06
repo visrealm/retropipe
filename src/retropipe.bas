@@ -177,9 +177,6 @@ main:
 		#addr = #addr + 32
 	NEXT I
 
-	DEFINE VRAM #VDP_NAME_TAB1, 12, logoNamesTop
-	DEFINE VRAM #VDP_NAME_TAB1 + 32, 12, logoNamesBottom
-
 	SPRITE FLICKER OFF	' the CVB sprite flicker routine messes with things. turn it off
 
 	VDP_DISABLE_INT	
@@ -208,8 +205,12 @@ main:
 
 #endif
 
-	' title / logo patterns
+	DEFINE VRAM #VDP_NAME_TAB1, 12, logoNamesTop
+	DEFINE VRAM #VDP_NAME_TAB1 + 32, 12, logoNamesBottom
+
     DEFINE CHAR PLETTER 0, 24, logoTopPletter
+
+	' title / logo patterns
 
     DEFINE CHAR PLETTER 128, 30, gridPletter
     DEFINE COLOR PLETTER 128, 18, gridColorPletter

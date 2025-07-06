@@ -23,7 +23,13 @@ titleScreen: PROCEDURE
         #addr = #addr + 32
     NEXT I
 
-    DEFINE VRAM PLETTER NAME_TAB_XY(0,3), 320, titlePipeNamesPletter
+    FILL_BUFFER(" ")
+    #addr = $3D00
+    FOR I = 0 TO 20
+        DEFINE VRAM #addr, 32, VARPTR rowBuffer(0)
+        #addr = #addr + 32
+    NEXT I
+    DEFINE VRAM PLETTER $3D20, 320, titlePipeNamesPletter
 
     #addr = #VDP_COLOR_TAB1 + 32 * 8
     FOR I = 0 to 63
@@ -32,7 +38,7 @@ titleScreen: PROCEDURE
 
     I = 136
     FOR X = 4 TO 27
-        #addr = NAME_TAB_XY(X, 6)
+        #addr = $3D20 + XY(X, 3)
         FOR Y = 6 TO 9
             VPOKE #addr, I
             I = I + 1
@@ -40,12 +46,42 @@ titleScreen: PROCEDURE
         NEXT Y
     NEXT X
 
+    VDP_ENABLE_INT
+    NAME_TABLE0
+
+    #baseAddr = #VDP_COLOR_TAB1
+
+    startRow = 11
+    endRow = 0
+    FOR J = 0 TO 13
+        WAIT
+        #dest = endRow * 32
+        #src = startRow * 32
+        FOR Y = 0 TO 10
+            IF I + Y < 200 THEN
+                DEFINE VRAM READ $3D00 + #src, 32, VARPTR rowBuffer(0)
+                DEFINE VRAM #VDP_NAME_TAB + #dest, 32, VARPTR rowBuffer(0)
+                #dest = #dest + 32
+            END IF
+            #src = #src + 32
+        NEXT Y
+        IF startRow > 0 THEN
+            startRow = startRow - 1
+        ELSE
+            #baseAddr = #VDP_COLOR_TAB2
+            endRow = endRow + 1
+        END IF
+        GOSUB titleLogoTick        
+    NEXT J
+
+    FOR J = 0 TO 20 : WAIT : GOSUB titleLogoTick  : NEXT J
+
     PRINT AT XY(9, 3), "VISREALM  2025"
+
+    FOR J = 0 TO 60 : WAIT : GOSUB titleLogoTick  : NEXT J
 
     PRINT AT XY(10, 19), "LET'S PLUMB!"
 
-    NAME_TABLE0
-	VDP_ENABLE_INT
 
 	WHILE 1
 	    WAIT
@@ -62,7 +98,6 @@ titleScreen: PROCEDURE
     	GOSUB updateNavInput
         IF g_nav THEN EXIT WHILE
         I = RANDOM(255)
-        gameFrame = gameFrame + 1
 	WEND
 
 	NAME_TABLE1
@@ -71,6 +106,7 @@ titleScreen: PROCEDURE
 	END
 
 titleLogoTick: PROCEDURE
+    gameFrame = gameFrame + 1
 	' only move the wave every 4 frames
 	logoOffset = gameFrame / 4
 
@@ -78,7 +114,7 @@ titleLogoTick: PROCEDURE
 	logoStart = (gameFrame AND 3) * 6
 	logoOffset = (logoOffset AND $1f) + 24 - logoStart
 
-    #addr = #VDP_COLOR_TAB2 + (138 * 8)
+    #addr = #baseAddr + (138 * 8)
     #addr = #addr + (logoStart * 32)
 
 	' update the color defs of three tiles
