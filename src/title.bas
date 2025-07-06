@@ -76,7 +76,7 @@ titleScreen: PROCEDURE
 
     FOR J = 0 TO 20 : WAIT : GOSUB titleLogoTick  : NEXT J
 
-    PRINT AT XY(9, 3), "VISREALM  2025"
+    PRINT AT XY(9, 3), "[]2025 VISREALM"
 
     FOR J = 0 TO 60 : WAIT : GOSUB titleLogoTick  : NEXT J
 

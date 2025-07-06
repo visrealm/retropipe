@@ -35,7 +35,7 @@
     DATA BYTE $a7, $a3, $bb, $05, $ef, $ff, $ff, $ff
     DATA BYTE $ff
 
-  font1Pletter: ' source: 256 bytes. compressed: 170 bytes
+  font1Pletter: ' source: 256 bytes. compressed: 175 bytes
     DATA BYTE $04, $7c, $c6, $de, $00, $c0, $01, $7e
     DATA BYTE $00, $38, $6c, $c6, $c6, $fe, $17, $02
     DATA BYTE $00, $fc, $03, $24, $02, $00, $17, $c0
@@ -53,11 +53,11 @@
     DATA BYTE $67, $cd, $6a, $00, $9d, $36, $38, $07
     DATA BYTE $18, $2f, $fe, $6c, $07, $6c, $e7, $ba
     DATA BYTE $00, $08, $15, $18, $30, $e0, $9f, $06
-    DATA BYTE $0c, $91, $06, $60, $27, $3c, $30, $c8
-    DATA BYTE $00, $3c, $7f, $60, $30, $09, $18, $0c
-    DATA BYTE $06, $02, $0f, $0c, $d2, $00, $0f, $10
-    DATA BYTE $2d, $b5, $2c, $9f, $00, $ff, $ff, $ff
-    DATA BYTE $ff, $f8
+    DATA BYTE $0c, $90, $06, $60, $27, $3f, $60, $cf
+    DATA BYTE $00, $d8, $d8, $cf, $60, $3f, $c0, $60
+    DATA BYTE $30, $0a, $18, $0c, $06, $02, $87, $07
+    DATA BYTE $a2, $00, $18, $c0, $10, $2d, $b5, $2c
+    DATA BYTE $9f, $00, $ff, $ff, $ff, $ff, $f8
 
   font2Pletter: ' source: 256 bytes. compressed: 170 bytes
     DATA BYTE $01, $18, $24, $24, $18, $00, $a0, $00

@@ -67,8 +67,7 @@ CONST GAME_STATE_BUILDING = 0
 CONST GAME_STATE_FLOWING  = 1
 CONST GAME_STATE_ENDED   = 2
 
-CONST GAME_START_DELAY_SECONDS = 10
-CONST GAME_START_DELAY_SECONDS_SLIDE_MODE = 30
+CONST GAME_START_DELAY_SECONDS = 15
 
 CONST CURSOR_SPRITE_ID         = 0
 CONST FLOW_SPRITE_ID           = 4
@@ -142,7 +141,7 @@ SIGNED scoreCurrentOffset, scoreDesiredOffset
 DIM savedNav
 DIM spillSpriteId
 
-CONST SLIDE_MODE = 1
+CONST SLIDE_MODE = 0
 
 
 ' ==========================================
@@ -161,16 +160,30 @@ CONST #SCORE_VRAM_ADDR		= #VDP_FREE_START
 
 CONST FLOW_COLOR = VDP_MED_GREEN
 
-DIM progressCount
+DIM #progressCount
+
+progressInit: PROCEDURE
+	#progressCount = 0
+	flowAnimTemp = 0
+	FOR I = 0 TO 7
+		flowAnimBuffer(I) = -1
+	NEXT I
+	END
 
 progressTick: PROCEDURE
 	VPOKE #addr, 31 : #addr = #addr + 1
-	IF ((progressCount - 1) % 7) = 0 THEN
+	IF (FRAME - #progressCount) > 25 THEN
+		#progressCount = FRAME
 		FILL_BUFFER(" ")
-		pun = RANDOM(LOADING_STRING_COUNT)
-		DEFINE VRAM #VDP_NAME_TAB1 + 22 * 32 + 12, 20, VARPTR loadingStrings(pun * LOADING_STRING_LEN)
+.newQuip:		
+		quipIndex = RANDOM(LOADING_STRING_COUNT)
+		FOR I = 0 TO 7
+			IF flowAnimBuffer(I) = quipIndex THEN GOTO .newQuip
+		NEXT I
+		flowAnimBuffer(flowAnimTemp) = quipIndex
+		DEFINE VRAM #VDP_NAME_TAB1 + 22 * 32 + 12, 20, VARPTR loadingStrings(quipIndex * LOADING_STRING_LEN)
+		flowAnimTemp = flowAnimTemp + 1
 	END IF
-	progressCount = progressCount + 1
 	END
 
 

@@ -70,9 +70,9 @@ font1:
     DATA BYTE $C6, $C6, $6C, $38, $6C, $C6, $C6, $00 ' X
     DATA BYTE $C6, $C6, $C6, $7C, $18, $30, $E0, $00 ' Y
     DATA BYTE $FE, $06, $0C, $18, $30, $60, $FE, $00 ' Z
-    DATA BYTE $3C, $30, $30, $30, $30, $30, $3C, $00 ' [
+    DATA BYTE $3F, $60, $CF, $D8, $D8, $CF, $60, $3F
     DATA BYTE $C0, $60, $30, $18, $0C, $06, $02, $00 ' \
-    DATA BYTE $3C, $0C, $0C, $0C, $0C, $0C, $3C, $00 ' ]
+    DATA BYTE $C0, $60, $30, $30, $30, $30, $60, $C0
     DATA BYTE $10, $38, $6C, $C6, $00, $00, $00, $00 ' ^
     DATA BYTE $00, $00, $00, $00, $00, $00, $00, $FF ' _
 font2:
