@@ -170,12 +170,21 @@ main:
 	VDP_REG(5) = defaultReg(5)
 	VDP_REG(6) = defaultReg(6)
 
+	FILL_BUFFER(" ")
+	#addr = #VDP_NAME_TAB1
+	FOR I = 0 TO 23
+		DEFINE VRAM #addr, 32, VARPTR rowBuffer(0)
+		#addr = #addr + 32
+	NEXT I
+
+	DEFINE VRAM #VDP_NAME_TAB1, 12, logoNamesTop
+	DEFINE VRAM #VDP_NAME_TAB1 + 32, 12, logoNamesBottom
+
 	SPRITE FLICKER OFF	' the CVB sprite flicker routine messes with things. turn it off
 
-	' font patterns - write to each bank
-	FOR #I = $0100 TO $1100 STEP $0800
-        DEFINE VRAM PLETTER #I, $300, fontPletter
-    NEXT #I
+	VDP_DISABLE_INT	
+
+	DEFINE CHAR PLETTER 32, 60, fontPletter
 
 	FOR I = 32 TO 127
 		DEFINE COLOR I, 1, fontColor
@@ -185,9 +194,7 @@ main:
 #if SHOW_TITLE
 	GOSUB titleScreen
 
-	FOR #I = $0100 TO $1100 STEP $0800
-        DEFINE VRAM PLETTER #I, $300, fontPletter
-    NEXT #I
+	DEFINE CHAR PLETTER 32, 60, fontPletter
 
 	FOR I = 0 TO 254
 		DEFINE COLOR I, 1, defaultColor
@@ -351,6 +358,7 @@ pipeGame: PROCEDURE
 	currentStartDelay = GAME_START_DELAY_SECONDS - currentLevel
 	IF currentStartDelay < 5 THEN currentStartDelay = 5
 
+	NAME_TABLE0
 	VDP_ENABLE_INT
 
 	' main game loop
@@ -394,6 +402,16 @@ pipeGame: PROCEDURE
 			gameSeconds = gameSeconds + 1
 		END IF
 	WEND
+
+	' copy screen to name table 1
+	#addr = 0
+	FOR I = 0 TO 23
+		DEFINE VRAM READ #VDP_NAME_TAB + #addr, 32, VARPTR rowBuffer(0)
+		DEFINE VRAM #VDP_NAME_TAB1 + #addr, 32, VARPTR rowBuffer(0)
+		#addr = #addr + 32
+	NEXT I
+	
+	NAME_TABLE1
 	END
 
 levelEnd: PROCEDURE

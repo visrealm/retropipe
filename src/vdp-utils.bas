@@ -14,6 +14,7 @@
 CONST #VDP_NAME_TAB      = $1800
 CONST #VDP_SPRITE_ATTR   = $1B00
 CONST #VDP_SPRITE_PATT   = $3800
+CONST #VDP_NAME_TAB1     = $1C00
 
 CONST #VDP_PATT_TAB1     = $0000
 CONST #VDP_PATT_TAB2     = #VDP_PATT_TAB1 + $0800
@@ -66,8 +67,12 @@ DEF FN VDP_ENABLE_INT_DISP_OFF = VDP_REG(1) = $A0 OR vdpR1Flags
 DEF FN XY(X, Y) = ((Y) * 32 + (X))                      ' PRINT AT XY(1, 2), ...
 
 DEF FN NAME_TAB_XY(X, Y) = (#VDP_NAME_TAB + XY(X, Y))   ' DEFINE VRAM NAME_TAB_XY(1, 2), ...
+DEF FN NAME_TAB1_XY(X, Y) = (#VDP_NAME_TAB1 + XY(X, Y))   ' DEFINE VRAM NAME_TAB_XY(1, 2), ...
 DEF FN PUT_XY(X, Y) = VPOKE NAME_TAB_XY(X, Y)     ' place a byte in the name table
 DEF FN GET_XY(X, Y) = VPEEK(NAME_TAB_XY(X, Y))          ' read a byte from the name table
+
+DEF FN NAME_TABLE0 = VDP(2) = 6
+DEF FN NAME_TABLE1 = VDP(2) = 7
 
 ' used as a staging area for dynamic vram data (instead of a VPOKE in a loop or similar)
 DIM rowBuffer(32)
@@ -113,4 +118,4 @@ vdpGpuDetect:
     DATA BYTE $03, $40    ' IDLE    
 
 defaultReg: ' default VDP register values
-    DATA BYTE $02, $80, $06, $FF, $03, $36, $07, $f4
+    DATA BYTE $02, $80, $07, $FF, $03, $36, $07, $f4

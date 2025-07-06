@@ -12,11 +12,9 @@
 
 titleScreen: PROCEDURE
 	
-	FOR #I = $0000 TO $1000 STEP $0800
-        DEFINE VRAM PLETTER #I + 96 * 8, 39* 8, titlePipePattPletter
-        DEFINE VRAM PLETTER #I + #VDP_COLOR_TAB1 + 96* 8, 39* 8, titlePipeColorPletter
-        DEFINE VRAM PLETTER #I + 136* 8, 96* 8, titleLogoPletter
-    NEXT #I
+    DEFINE CHAR PLETTER 96, 39, titlePipePattPletter
+    DEFINE COLOR PLETTER 96, 39, titlePipeColorPletter
+    DEFINE CHAR PLETTER 136, 96, titleLogoPletter
 
     ' set the background colors of the title text first two rows
     #addr = #VDP_COLOR_TAB1 + (136 * 8)
@@ -46,6 +44,7 @@ titleScreen: PROCEDURE
 
     PRINT AT XY(10, 19), "LET'S PLUMB!"
 
+    NAME_TABLE0
 	VDP_ENABLE_INT
 
 	WHILE 1
@@ -66,7 +65,8 @@ titleScreen: PROCEDURE
         gameFrame = gameFrame + 1
 	WEND
 
-	VDP_DISABLE_INT_DISP_OFF
+	NAME_TABLE1
+	VDP_DISABLE_INT
 
 	END
 
