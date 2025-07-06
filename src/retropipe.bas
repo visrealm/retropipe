@@ -179,13 +179,17 @@ main:
 
 	SPRITE FLICKER OFF	' the CVB sprite flicker routine messes with things. turn it off
 
-	VDP_DISABLE_INT	
+'	VDP_DISABLE_INT
 
 	DEFINE CHAR PLETTER 32, 60, fontPletter
 
 	FOR I = 32 TO 127
 		DEFINE COLOR I, 1, fontColor
 	NEXT I
+
+    DEFINE CHAR PLETTER 0, 24, logoTopPletter
+	DEFINE VRAM #VDP_NAME_TAB1, 12, logoNamesTop
+	DEFINE VRAM #VDP_NAME_TAB1 + 32, 12, logoNamesBottom
 
 
 #if SHOW_TITLE
@@ -205,10 +209,6 @@ main:
 
 #endif
 
-	DEFINE VRAM #VDP_NAME_TAB1, 12, logoNamesTop
-	DEFINE VRAM #VDP_NAME_TAB1 + 32, 12, logoNamesBottom
-
-    DEFINE CHAR PLETTER 0, 24, logoTopPletter
 
 	' title / logo patterns
 
@@ -430,13 +430,36 @@ replaceTick: PROCEDURE
 
 	IF ticks < 24 THEN
 		SPRITE CRACK_SPRITE_ID, spriteY + 4, spriteX + 4, (CRACK_SPRITE_PATT_ID + ticks / 6) * 4, VDP_GREY
-	ELSEIF gameState <> GAME_STATE_ENDED THEN
-		SPRITE CRACK_SPRITE_ID, -16, 0, CRACK_SPRITE_PATT_ID * 4, VDP_TRANSPARENT
-		isReplacing = FALSE
-		tileId = 0
-		GOSUB placeTile
+		SPRITE CRACK_SPRITE_ID, spriteY + 4, spriteX + 4, (CRACK_SPRITE_PATT_ID + ticks / 6) * 4, VDP_GREY
+		xOff = 0
+		yOff = 0
 	END IF
+	IF gameState <> GAME_STATE_ENDED THEN
 
+		IF ticks >= 24 THEN
+			IF (ticks AND 3) = 0 THEN
+				xOff = xOff + 3
+				yOff = yOff + 2
+			END IF
+			sprOff = (ticks - 24) AND $fc
+			SPRITE CRACK_SPRITE_ID, spriteY + yOff, spriteX + 4 + xOff, EXPLODE_SPRITE_PATT_ID * 4 + sprOff, VDP_DK_BLUE
+			SPRITE EXPLODE_SPRITE_ID, spriteY + yOff, spriteX + 4 - xOff, EXPLODE_SPRITE_PATT_ID * 4 + sprOff, VDP_DK_BLUE
+		END IF
+		IF ticks = 32 THEN
+			g_type = 0
+			GOSUB renderGameCell
+		ELSEIF ticks = 40 THEN
+			isReplacing = FALSE
+			tileId = 0
+			GOSUB placeTile
+			isReplacing = TRUE
+		END IF
+	END IF
+	IF ticks = 48 THEN
+		isReplacing = FALSE
+		SPRITE CRACK_SPRITE_ID, $d0, 0, CRACK_SPRITE_PATT_ID * 4, VDP_TRANSPARENT
+		SPRITE EXPLODE_SPRITE_ID, $d0, 0, CRACK_SPRITE_PATT_ID * 4, VDP_TRANSPARENT
+	END IF	
 	END
 
 ' ==========================================
@@ -832,7 +855,7 @@ uiTick: PROCEDURE
 placeTile: PROCEDURE
 	tileId = tileId AND CELL_TILE_MASK
 	IF tileId > 0 THEN
-		#score = #score - POINTS_REPLACE_DEDUCT
+		#score = #score - (POINTS_REPLACE_DEDUCT + POINTS_BUILD)
 		
 		' test going negative
 		IF #score > 65485 then #score = 0
