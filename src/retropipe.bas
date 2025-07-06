@@ -407,8 +407,12 @@ levelEnd: PROCEDURE
 
 replaceTick: PROCEDURE
 
+	ticks = gameFrame - replaceFrame
 
-	IF gameFrame - replaceFrame > 30 THEN
+	IF ticks < 24 THEN
+		SPRITE CRACK_SPRITE_ID, spriteY + 4, spriteX + 4, (CRACK_SPRITE_PATT_ID + ticks / 6) * 4, VDP_GREY
+	ELSEIF gameState <> GAME_STATE_ENDED THEN
+		SPRITE CRACK_SPRITE_ID, -16, 0, CRACK_SPRITE_PATT_ID * 4, VDP_TRANSPARENT
 		isReplacing = FALSE
 		tileId = 0
 		GOSUB placeTile
@@ -816,6 +820,11 @@ placeTile: PROCEDURE
 
 		isReplacing = TRUE
 		replaceFrame = gameFrame
+
+		g_type = chute(0)
+		g_cell = cursorIndex
+		game(cursorIndex) = g_type
+
 		RETURN
 	ELSE
 		#score = #score + POINTS_BUILD
