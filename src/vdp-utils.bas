@@ -27,7 +27,7 @@ CONST #VDP_COLOR_TAB3    = #VDP_COLOR_TAB2 + $0800
 CONST #VDP_FREE_START    = $1B80
 CONST #VDP_FREE_END      = $1FFF
 
-CONST TILE_ROWS          = 8
+CONST TILE_SIZE          = 8
 
 CONST VDP_TRANSPARENT    = 0
 CONST VDP_BLACK          = 1
@@ -45,6 +45,9 @@ CONST VDP_DK_GREEN       = 12
 CONST VDP_MAGENTA        = 13
 CONST VDP_GREY           = 14
 CONST VDP_WHITE          = 15
+
+CONST NAME_TABLE_WIDTH   = 32
+CONST NAME_TABLE_HEIGHT  = 24
 
 #if TMS9918_TESTING
     DEF FN VDP_REG(VR) = IF (VR < 8) THEN VDP(VR)
@@ -64,20 +67,21 @@ DEF FN VDP_ENABLE_INT = VDP_REG(1) = $E0 OR vdpR1Flags
 DEF FN VDP_DISABLE_INT_DISP_OFF = VDP_REG(1) = $80 OR vdpR1Flags
 DEF FN VDP_ENABLE_INT_DISP_OFF = VDP_REG(1) = $A0 OR vdpR1Flags
 ' name table helpers
-DEF FN XY(X, Y) = ((Y) * 32 + (X))                      ' PRINT AT XY(1, 2), ...
+DEF FN XY(X, Y) = ((Y) * NAME_TABLE_WIDTH + (X))         ' PRINT AT XY(1, 2), ...
 DEF FN XY1(X, Y) = ((#VDP_NAME_TAB1 - #VDP_NAME_TAB) + XY(X, Y))
 
-DEF FN NAME_TAB_XY(X, Y) = (#VDP_NAME_TAB + XY(X, Y))   ' DEFINE VRAM NAME_TAB_XY(1, 2), ...
-DEF FN NAME_TAB1_XY(X, Y) = (#VDP_NAME_TAB1 + XY(X, Y))   ' DEFINE VRAM NAME_TAB_XY(1, 2), ...
-DEF FN PUT_XY(X, Y) = VPOKE NAME_TAB_XY(X, Y)     ' place a byte in the name table
-DEF FN GET_XY(X, Y) = VPEEK(NAME_TAB_XY(X, Y))          ' read a byte from the name table
+DEF FN NAME_TAB_XY(X, Y) = (#VDP_NAME_TAB + XY(X, Y))    ' DEFINE VRAM NAME_TAB_XY(1, 2), ...
+DEF FN NAME_TAB1_XY(X, Y) = (#VDP_NAME_TAB1 + XY(X, Y))  ' DEFINE VRAM NAME_TAB_XY(1, 2), ...
+DEF FN PUT_XY(X, Y) = VPOKE NAME_TAB_XY(X, Y)            ' place a byte in the name table
+DEF FN GET_XY(X, Y) = VPEEK(NAME_TAB_XY(X, Y))           ' read a byte from the name table
 
 DEF FN NAME_TABLE0 = VDP(2) = 6
 DEF FN NAME_TABLE1 = VDP(2) = 7
 
+
 ' used as a staging area for dynamic vram data (instead of a VPOKE in a loop or similar)
-DIM rowBuffer(32)
-DEF FN FILL_BUFFER(C) = FOR J = 0 TO 31 : rowBuffer(J) = C : NEXT J
+DIM rowBuffer(NAME_TABLE_WIDTH)
+DEF FN FILL_BUFFER(C) = FOR J = 0 TO NAME_TABLE_WIDTH - 1 : rowBuffer(J) = C : NEXT J
 
 DIM vdpR1Flags
 
