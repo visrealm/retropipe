@@ -11,7 +11,7 @@ mkdir build 2> NUL
 
 del /Q /S build\*
 
-set VERSION=v0-1
+set VERSION=v0-1-2
 set FRIENDLYVER=%VERSION:-=.%
 
 pushd src

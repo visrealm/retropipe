@@ -144,7 +144,7 @@ DIM isReplacing
 DIM #lastTileNameIndex
 
 DIM flowAnimTemp
-DIM flowAnimBuffer(8)
+DIM flowAnimBuffer(16)
 DIM silentFrame
 
 DIM scoreCurrentOffset(5)
@@ -210,16 +210,11 @@ DIM #progressBarAddr
 progressInit: PROCEDURE
   #progressCount = 0
   flowAnimTemp = 0
-  FOR I = 0 TO 7
-    flowAnimBuffer(I) = -1
-  NEXT I
-  #progressBarAddr = #VDP_NAME_TAB1 + (23 * NAME_TABLE_WIDTH) + 12
-  FOR I = 0 TO 31 - 12
-    VPOKE #progressBarAddr + I, 30
-  NEXT I
+  #progressBarAddr = NAME_TAB1_XY(12, 23)
+  FILL_BUFFER(30)
+  DEFINE VRAM #progressBarAddr, 32-12, VARPTR rowBuffer(0)
   #baseAddr = #VDP_COLOR_TAB3
-  gameFrame = 0
-  GOSUB progressLogoTick
+  DEFINE VRAM PLETTER $1F00, LOADING_STRING_LEN * LOADING_STRING_COUNT, loadingStringsPletter
   GOSUB progressLogoTick
   END
 
@@ -239,13 +234,12 @@ progressTick: PROCEDURE
 
   IF (FRAME - #progressCount) > 25 THEN
     #progressCount = FRAME
-.newQuip:    
-    quipIndex = RANDOM(LOADING_STRING_COUNT)
-    FOR I = 0 TO 7
-      IF flowAnimBuffer(I) = quipIndex THEN GOTO .newQuip
-    NEXT I
-    flowAnimBuffer(flowAnimTemp) = quipIndex
-    DEFINE VRAM NAME_TAB1_XY(12, 22), 20, VARPTR loadingStrings(quipIndex * LOADING_STRING_LEN)
+    WHILE flowAnimBuffer(quipIndex)
+      quipIndex = RANDOM(LOADING_STRING_COUNT)
+    WEND
+    flowAnimBuffer(quipIndex) = TRUE
+    DEFINE VRAM READ $1F00 + quipIndex * LOADING_STRING_LEN, LOADING_STRING_LEN, VARPTR rowBuffer(0)
+    DEFINE VRAM NAME_TAB1_XY(12, 22), LOADING_STRING_LEN, VARPTR rowBuffer(0)
     flowAnimTemp = flowAnimTemp + 1
   END IF
   END
@@ -299,11 +293,10 @@ main:
   GOSUB titleScreen
 #endif
 
+  VDP_ENABLE_INT
   GOSUB progressInit
   WAIT
   NAME_TABLE1
-
-  VDP_ENABLE_INT
 
 #if SHOW_TITLE
   FOR I = 32 TO 254
@@ -1189,19 +1182,6 @@ renderFfwdButton: PROCEDURE
   GOSUB updateCursorPos
   END
 
-loadingStrings:
-  DATA BYTE "    UNCLOGGING LOGIC"
-  DATA BYTE " ROUTING PIPE DREAMS"
-  DATA BYTE "      SIPHONING BITS"
-  DATA BYTE "     ALIGNING ELBOWS"
-  DATA BYTE "       HYDRATING RAM"
-  DATA BYTE "         VALVE CHECK"
-  DATA BYTE "       FLOW IMMINENT"
-  DATA BYTE "  PARSING PIPE LOGIC"
-  DATA BYTE " PRESSURIZING PIXELS"
-  DATA BYTE "CONFIGURING COUPLERS"
-
-
 #if SHOW_TITLE
 include "title.bas"
 #endif
@@ -1210,6 +1190,7 @@ include "font.pletter.bas"
 include "logo.pletter.bas"
 include "sprites.pletter.bas"
 include "tiles.pletter.bas"
+include "loading.pletter.bas"
 include "patterns.bas"
 include "lookups.bas"
 
