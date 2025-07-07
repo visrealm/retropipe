@@ -48,13 +48,16 @@ def extractLabelsAndData(basPath):
                 byteValues = match.group(1).split(',')
                 for byte in byteValues:
                     byte = byte.strip()
-                    if byte.startswith('$'):
+                    if byte.startswith('"') and byte.endswith('"'):
+                        # Handle string: strip quotes and convert each char to its ASCII value
+                        for char in byte[1:-1]:
+                            dataBuffer.append(ord(char))
+                    elif byte.startswith('$'):
                         dataBuffer.append(int(byte[1:], 16))
                     elif byte.lower().startswith('0x'):
                         dataBuffer.append(int(byte, 16))
                     else:
                         dataBuffer.append(int(byte))
-
     if currentLabel and dataBuffer:
         labelDataMap[currentLabel] = dataBuffer
 

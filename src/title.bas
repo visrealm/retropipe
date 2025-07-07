@@ -91,21 +91,21 @@ titleScreen: PROCEDURE
 
 
 	WHILE 1
-	    WAIT
-        IF (FRAME AND $7) = 0 THEN
-            IF (FRAME AND $8) OR triggered THEN
-                PRINT AT XY(8, 19), ">"
-                PRINT AT XY(23, 19), "<"
-            ELSE
-                PRINT AT XY(8, 19), " "
-                PRINT AT XY(23, 19), " "
-            END IF
-        END IF
-        GOSUB titleLogoTick
-    	GOSUB updateNavInput
-        IF g_nav THEN triggered = TRUE
-        IF triggered AND (g_nav = 0) THEN EXIT WHILE
-        I = RANDOM(FRAME)
+    WAIT
+    IF (FRAME AND $7) = 0 THEN
+      IF (FRAME AND $8) OR triggered THEN
+        PRINT AT XY(8, 19), ">"
+        PRINT AT XY(23, 19), "<"
+      ELSE
+        PRINT AT XY(8, 19), " "
+        PRINT AT XY(23, 19), " "
+      END IF
+    END IF
+    GOSUB titleLogoTick
+    GOSUB updateNavInput
+    IF g_nav THEN triggered = TRUE
+    IF triggered AND (g_nav = 0) THEN EXIT WHILE
+    I = RANDOM(FRAME)
 	WEND
 	END
 
