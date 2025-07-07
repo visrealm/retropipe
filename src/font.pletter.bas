@@ -59,27 +59,3 @@
     DATA BYTE $a2, $00, $18, $c0, $10, $2d, $b5, $2c
     DATA BYTE $9f, $00, $ff, $ff, $ff, $ff, $f8
 
-  font2Pletter: ' source: 256 bytes. compressed: 170 bytes
-    DATA BYTE $01, $18, $24, $24, $18, $00, $a0, $00
-    DATA BYTE $7c, $06, $7e, $08, $c6, $7e, $00, $c0
-    DATA BYTE $00, $fc, $c6, $38, $c6, $fc, $0f, $c6
-    DATA BYTE $c0, $0a, $c6, $7c, $00, $06, $00, $16
-    DATA BYTE $ce, $17, $0f, $20, $fe, $c0, $0f, $1c
-    DATA BYTE $36, $30, $78, $59, $30, $02, $0f, $c6
-    DATA BYTE $16, $06, $fc, $92, $2e, $00, $00, $44
-    DATA BYTE $25, $38, $18, $00, $3c, $2f, $ca, $31
-    DATA BYTE $06, $38, $17, $0b, $cc, $d8, $f8, $cc
-    DATA BYTE $17, $ba, $15, $17, $00, $06, $cc, $fe
-    DATA BYTE $fe, $d6, $d6, $6d, $07, $2f, $cb, $4f
-    DATA BYTE $c6, $5f, $6c, $0f, $45, $f1, $4f, $06
-    DATA BYTE $d9, $0f, $83, $ca, $5f, $c0, $91, $87
-    DATA BYTE $98, $3b, $7e, $3f, $0e, $ce, $0f, $36
-    DATA BYTE $ee, $87, $36, $68, $38, $07, $d6, $38
-    DATA BYTE $fe, $6c, $07, $6c, $38, $77, $6c, $4f
-    DATA BYTE $50, $1e, $30, $07, $fe, $0c, $38, $00
-    DATA BYTE $60, $fe, $00, $3f, $60, $cf, $d8, $d8
-    DATA BYTE $15, $cf, $60, $3f, $3c, $99, $c5, $03
-    DATA BYTE $c0, $60, $b5, $06, $00, $60, $c0, $76
-    DATA BYTE $dc, $cf, $ed, $ff, $3f, $00, $ff, $ff
-    DATA BYTE $ff, $f0
-

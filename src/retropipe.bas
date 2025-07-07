@@ -93,12 +93,12 @@ CONST EXPLODE_SPRITE_PATT_ID   = CRACK_SPRITE_PATT_ID + CRACK_SPRITE_COUNT
 CONST EXPLODE_SPRITE_COUNT     = 6
 
 ' tile pattern ids
-CONST FFWD_PATT_ID             = 24    ' fast forward button
-CONST FFWD_PATT_COUNT          = 6          ' fast forward button
-CONST PIPES_PATT_ID            = 158
+CONST FFWD_PATT_ID             = 96    ' fast forward button
+CONST FFWD_PATT_COUNT          = 12
+CONST PIPES_PATT_ID            = 158   ' inner pipe tiles
 CONST PIPES_PATT_COUNT         = 10
 CONST PIPES_FILLED_PATT_ID     = PIPES_PATT_ID + PIPES_PATT_COUNT
-CONST CHUTE_BORDERS_PATT_ID    = 178
+CONST CHUTE_BORDERS_PATT_ID    = 178   ' chute ui tiles
 CONST CHUTE_BORDERS_COUNT      = 7
 
 CONST LOADING_STRING_COUNT     = 10
@@ -172,7 +172,8 @@ include "tiles.bas"
 
 ' since we have a non-ideal (not pow2) playfield area size
 ' added lookup tables for various operations on it
-divNine: ' up to 9 * 7
+
+divNine: ' I / 9 (up to I = 63)
   DATA BYTE 0, 0, 0, 0, 0, 0, 0, 0, 0
   DATA BYTE 1, 1, 1, 1, 1, 1, 1, 1, 1
   DATA BYTE 2, 2, 2, 2, 2, 2, 2, 2, 2
@@ -180,7 +181,8 @@ divNine: ' up to 9 * 7
   DATA BYTE 4, 4, 4, 4, 4, 4, 4, 4, 4
   DATA BYTE 5, 5, 5, 5, 5, 5, 5, 5, 5
   DATA BYTE 6, 6, 6, 6, 6, 6, 6, 6, 6
-modNine:  ' up to 9 * 7
+
+modNine:  ' I % 9 (up to I = 63)
   DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
   DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
   DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
@@ -188,7 +190,8 @@ modNine:  ' up to 9 * 7
   DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
   DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
   DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
-mulThree:  ' up to 31
+
+mulThree:  ' I * 3 (up to I = 31)
   DATA BYTE 0, 3, 6, 9, 12, 15, 18, 21
   DATA BYTE 24, 27, 30, 33, 36, 39, 42, 45
   DATA BYTE 48, 51, 54, 57, 60, 63, 66, 69
@@ -284,7 +287,7 @@ main:
     DEFINE COLOR I, 1, fontColor
   NEXT I
 
-    DEFINE CHAR PLETTER 0, 24, logoTopPletter
+  DEFINE CHAR PLETTER 0, 24, logoTopPletter
   DEFINE VRAM NAME_TAB1_XY(0, 22), 12, logoNamesTop
   DEFINE VRAM NAME_TAB1_XY(0, 23), 12, logoNamesBottom
   DEFINE CHAR 30, 1, tilePiece
@@ -300,10 +303,14 @@ main:
   WAIT
   NAME_TABLE1
 
-    VDP_ENABLE_INT
+  VDP_ENABLE_INT
 
 #if SHOW_TITLE
   FOR I = 32 TO 254
+    DEFINE COLOR I, 1, defaultColor
+  NEXT I
+  GOSUB progressTick
+  FOR I = 128 TO 254
     DEFINE COLOR I, 1, defaultColor
   NEXT I
   DEFINE COLOR 31, 1, tilePieceColor
@@ -313,25 +320,19 @@ main:
   GOSUB progressTick
   DEFINE CHAR PLETTER 32, 32, font0Pletter
   GOSUB progressTick
-  DEFINE CHAR PLETTER 96, 32, font2Pletter
-  GOSUB progressTick
-
-  FOR I = 128 TO 254
-    DEFINE COLOR I, 1, defaultColor
-  NEXT I
-
-  GOSUB progressTick
+  'DEFINE CHAR PLETTER 96, 32, font2Pletter
+  'GOSUB progressTick
 #endif
 
 
 
   ' title / logo patterns
 
-    DEFINE CHAR PLETTER 128, 30, gridPletter
+  DEFINE CHAR PLETTER 128, 30, gridPletter
 
   GOSUB progressTick
 
-    DEFINE COLOR PLETTER 128, 18, gridColorPletter
+  DEFINE COLOR PLETTER 128, 18, gridColorPletter
 
   GOSUB progressTick
 
@@ -372,6 +373,8 @@ main:
   ' gamefield patterns
     DEFINE CHAR PLETTER CHUTE_BORDERS_PATT_ID, CHUTE_BORDERS_COUNT, bordersPletter
 
+  GOSUB progressTick
+
   ' set up the name table
   ' ------------------------------
   DEFINE VRAM NAME_TAB_XY(0, 0), 12, logoNamesTop
@@ -404,6 +407,11 @@ main:
   DEFINE SPRITE PLETTER EXPLODE_SPRITE_PATT_ID, EXPLODE_SPRITE_COUNT, explodePattPletter
   GOSUB progressTick
 
+  DEFINE VRAM PLETTER #VDP_PATT_TAB3 + (FFWD_PATT_ID * TILE_SIZE), FFWD_PATT_COUNT * TILE_SIZE, ffwdPattPletter
+  DEFINE VRAM PLETTER #VDP_COLOR_TAB3 + (FFWD_PATT_ID * TILE_SIZE), FFWD_PATT_COUNT * TILE_SIZE, ffwdColorPletter
+
+  GOSUB progressTick
+
   currentLevel = 1
   #score = 0
 
@@ -419,7 +427,7 @@ pipeGame: PROCEDURE
   remainingPipes = 13 + currentLevel
   IF remainingPipes > 24 THEN remainingPipes = 24
 
-  hoverFfwd = 0
+  hoverFfwd = FALSE
 
   currentSpeed = 8
   J = currentLevel / 3
@@ -435,7 +443,6 @@ pipeGame: PROCEDURE
   FILL_BUFFER(184)
   DEFINE VRAM NAME_TAB_XY(0, 2), 31, VARPTR rowBuffer(0)
 
-  GOSUB renderFfwdButton
   GOSUB updateCursorPos
 
 
@@ -527,9 +534,7 @@ pipeGame: PROCEDURE
       GOSUB flowTick
     ELSEIF gameSeconds = currentStartDelay THEN
       gameState = GAME_STATE_FLOWING
-      FOR J = 0 TO FFWD_PATT_COUNT - 1 : rowBuffer(J) = J + FFWD_PATT_ID : NEXT J
-      DEFINE VRAM NAME_TAB_XY(1, CHUTE_BOTTOM + 1), 3, VARPTR rowBuffer(0)
-      DEFINE VRAM NAME_TAB_XY(1, CHUTE_BOTTOM + 2), 3, VARPTR rowBuffer(3)
+      GOSUB renderFfwdButton
     ELSEIF gameState = GAME_STATE_ENDED THEN
       IF gameSeconds < 2 THEN
         chuteOffset = chuteOffset - 1
@@ -1133,7 +1138,11 @@ renderCursor: PROCEDURE
   CONST CURSOR_SIZE   = 33
   CONST CURSOR_SPREAD = CURSOR_SIZE - 16
 
-  IF gameFrame AND 8 THEN color = VDP_GREY ELSE color = VDP_WHITE
+  ' flashing cursor
+  color = VDP_WHITE
+  IF gameFrame AND 8 THEN color = VDP_GREY
+
+  ' over a locked tile?
   IF game(cursorIndex) AND CELL_LOCKED_FLAG THEN color = VDP_MED_RED
 
   IF SLIDE_MODE THEN
@@ -1153,28 +1162,30 @@ renderCursor: PROCEDURE
     END IF
   END IF
 
+  ' hide cursor if games ends
   IF (gameState = GAME_STATE_ENDED) OR hoverFfwd THEN
      color = VDP_TRANSPARENT
      spriteY = -24
   END IF
 
-  SPRITE CURSOR_SPRITE_ID + 0, spriteY, spriteX, CURSOR_SPRITE_PATT_ID + 0 * 4, color
-  SPRITE CURSOR_SPRITE_ID + 1, spriteY + CURSOR_SPREAD, spriteX, CURSOR_SPRITE_PATT_ID + 1 * 4, color
-  SPRITE CURSOR_SPRITE_ID + 2, spriteY, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 2 * 4, color
-  SPRITE CURSOR_SPRITE_ID + 3, spriteY + CURSOR_SPREAD, spriteX + CURSOR_SPREAD, CURSOR_SPRITE_PATT_ID + 3 * 4, color
+  ' render the four cursor corners
+  FOR I = 0 TO 3
+    SPRITE CURSOR_SPRITE_ID + I, spriteY + .cursorSpread(I), spriteX + .cursorSpread(I / 2), CURSOR_SPRITE_PATT_ID + I * 4, color
+  NEXT I
   END
+
+.cursorSpread:
+  DATA BYTE 0, CURSOR_SPREAD, 0, CURSOR_SPREAD
 
 ' ==========================================
 ' Render the fast forward button
 ' ------------------------------------------
 renderFfwdButton: PROCEDURE
-  IF hoverFfwd THEN
-    DEFINE VRAM PLETTER #VDP_PATT_TAB3 + (FFWD_PATT_ID * TILE_SIZE), FFWD_PATT_COUNT * TILE_SIZE, ffwdPattHoverPletter
-    DEFINE VRAM PLETTER #VDP_COLOR_TAB3 + (FFWD_PATT_ID * TILE_SIZE), FFWD_PATT_COUNT * TILE_SIZE, ffwdColorHoverPletter
-  ELSE
-    DEFINE VRAM PLETTER #VDP_PATT_TAB3 + (FFWD_PATT_ID * TILE_SIZE), FFWD_PATT_COUNT * TILE_SIZE, ffwdPattPletter
-    DEFINE VRAM PLETTER #VDP_COLOR_TAB3 + (FFWD_PATT_ID * TILE_SIZE), FFWD_PATT_COUNT * TILE_SIZE, ffwdColorPletter
-  END IF
+  FOR J = 0 TO FFWD_PATT_COUNT - 1
+    rowBuffer(J) = J + FFWD_PATT_ID + (hoverFfwd AND 6)
+  NEXT J
+  DEFINE VRAM NAME_TAB_XY(1, CHUTE_BOTTOM + 1), 3, VARPTR rowBuffer(0)
+  DEFINE VRAM NAME_TAB_XY(1, CHUTE_BOTTOM + 2), 3, VARPTR rowBuffer(3)
   GOSUB updateCursorPos
   END
 

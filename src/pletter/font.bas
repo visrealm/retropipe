@@ -75,36 +75,37 @@ font1:
     DATA BYTE $C0, $60, $30, $30, $30, $30, $60, $C0
     DATA BYTE $10, $38, $6C, $C6, $00, $00, $00, $00 ' ^
     DATA BYTE $00, $00, $00, $00, $00, $00, $00, $FF ' _
-font2:
-    DATA BYTE $18, $24, $24, $18, $00, $00, $00, $00 ' ` 
-    DATA BYTE $00, $00, $7C, $06, $7E, $C6, $7E, $00 ' a
-    DATA BYTE $C0, $C0, $C0, $FC, $C6, $C6, $FC, $00 ' b
-    DATA BYTE $00, $00, $7C, $C6, $C0, $C6, $7C, $00 ' c
-    DATA BYTE $06, $06, $06, $7E, $C6, $C6, $7E, $00 ' d
-    DATA BYTE $00, $00, $7C, $C6, $FE, $C0, $7C, $00 ' e
-    DATA BYTE $1C, $36, $30, $78, $30, $30, $78, $00 ' f
-    DATA BYTE $00, $00, $7E, $C6, $C6, $7E, $06, $FC ' g
-    DATA BYTE $C0, $C0, $FC, $C6, $C6, $C6, $C6, $00 ' h
-    DATA BYTE $18, $00, $38, $18, $18, $18, $3C, $00 ' i
-    DATA BYTE $06, $00, $06, $06, $06, $06, $C6, $7C ' j
-    DATA BYTE $C0, $C0, $CC, $D8, $F8, $CC, $C6, $00 ' k
-    DATA BYTE $38, $18, $18, $18, $18, $18, $3C, $00 ' l
-    DATA BYTE $00, $00, $CC, $FE, $FE, $D6, $D6, $00 ' m
-    DATA BYTE $00, $00, $FC, $C6, $C6, $C6, $C6, $00 ' n
-    DATA BYTE $00, $00, $7C, $C6, $C6, $C6, $7C, $00 ' o
-    DATA BYTE $00, $00, $FC, $C6, $C6, $FC, $C0, $C0 ' p
-    DATA BYTE $00, $00, $7E, $C6, $C6, $7E, $06, $06 ' q
-    DATA BYTE $00, $00, $FC, $C6, $C0, $C0, $C0, $00 ' r
-    DATA BYTE $00, $00, $7E, $C0, $7C, $06, $FC, $00 ' s
-    DATA BYTE $18, $18, $7E, $18, $18, $18, $0E, $00 ' t
-    DATA BYTE $00, $00, $C6, $C6, $C6, $C6, $7E, $00 ' u
-    DATA BYTE $00, $00, $C6, $C6, $C6, $7C, $38, $00 ' v
-    DATA BYTE $00, $00, $C6, $C6, $D6, $FE, $6C, $00 ' w
-    DATA BYTE $00, $00, $C6, $6C, $38, $6C, $C6, $00 ' x
-    DATA BYTE $00, $00, $C6, $C6, $C6, $7E, $06, $FC ' y
-    DATA BYTE $00, $00, $FE, $0C, $38, $60, $FE, $00 ' z
-    DATA BYTE $3F, $60, $CF, $D8, $D8, $CF, $60, $3F
-    DATA BYTE $18, $18, $18, $00, $18, $18, $18, $00 ' |
-    DATA BYTE $C0, $60, $30, $30, $30, $30, $60, $C0
-    DATA BYTE $76, $DC, $00, $00, $00, $00, $00, $00 ' ~
-    DATA BYTE $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF '  
+
+'font2:
+'    DATA BYTE $18, $24, $24, $18, $00, $00, $00, $00 ' ` 
+'    DATA BYTE $00, $00, $7C, $06, $7E, $C6, $7E, $00 ' a
+'    DATA BYTE $C0, $C0, $C0, $FC, $C6, $C6, $FC, $00 ' b
+'    DATA BYTE $00, $00, $7C, $C6, $C0, $C6, $7C, $00 ' c
+'    DATA BYTE $06, $06, $06, $7E, $C6, $C6, $7E, $00 ' d
+'    DATA BYTE $00, $00, $7C, $C6, $FE, $C0, $7C, $00 ' e
+'    DATA BYTE $1C, $36, $30, $78, $30, $30, $78, $00 ' f
+'    DATA BYTE $00, $00, $7E, $C6, $C6, $7E, $06, $FC ' g
+'    DATA BYTE $C0, $C0, $FC, $C6, $C6, $C6, $C6, $00 ' h
+'    DATA BYTE $18, $00, $38, $18, $18, $18, $3C, $00 ' i
+'    DATA BYTE $06, $00, $06, $06, $06, $06, $C6, $7C ' j
+'    DATA BYTE $C0, $C0, $CC, $D8, $F8, $CC, $C6, $00 ' k
+'    DATA BYTE $38, $18, $18, $18, $18, $18, $3C, $00 ' l
+'    DATA BYTE $00, $00, $CC, $FE, $FE, $D6, $D6, $00 ' m
+'    DATA BYTE $00, $00, $FC, $C6, $C6, $C6, $C6, $00 ' n
+'    DATA BYTE $00, $00, $7C, $C6, $C6, $C6, $7C, $00 ' o
+'    DATA BYTE $00, $00, $FC, $C6, $C6, $FC, $C0, $C0 ' p
+'    DATA BYTE $00, $00, $7E, $C6, $C6, $7E, $06, $06 ' q
+'    DATA BYTE $00, $00, $FC, $C6, $C0, $C0, $C0, $00 ' r
+'    DATA BYTE $00, $00, $7E, $C0, $7C, $06, $FC, $00 ' s
+'    DATA BYTE $18, $18, $7E, $18, $18, $18, $0E, $00 ' t
+'    DATA BYTE $00, $00, $C6, $C6, $C6, $C6, $7E, $00 ' u
+'    DATA BYTE $00, $00, $C6, $C6, $C6, $7C, $38, $00 ' v
+'    DATA BYTE $00, $00, $C6, $C6, $D6, $FE, $6C, $00 ' w
+'    DATA BYTE $00, $00, $C6, $6C, $38, $6C, $C6, $00 ' x
+'    DATA BYTE $00, $00, $C6, $C6, $C6, $7E, $06, $FC ' y
+'    DATA BYTE $00, $00, $FE, $0C, $38, $60, $FE, $00 ' z
+'    DATA BYTE $3F, $60, $CF, $D8, $D8, $CF, $60, $3F
+'    DATA BYTE $18, $18, $18, $00, $18, $18, $18, $00 ' |
+'    DATA BYTE $C0, $60, $30, $30, $30, $30, $60, $C0
+'    DATA BYTE $76, $DC, $00, $00, $00, $00, $00, $00 ' ~
+'    DATA BYTE $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF '  
