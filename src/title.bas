@@ -10,6 +10,11 @@
 ' https://github.com/visrealm/retropipe
 
 
+' perhaps an delay/task array. where the task is an index to
+' an on x GOSUB. Need to factor in titleLogoTick
+
+CONST #TITLE_TEMP_ADDRESS = #VDP_SPRITE_PATT
+
 titleScreen: PROCEDURE
 	
     DEFINE CHAR PLETTER 96, 39, titlePipePattPletter
@@ -24,12 +29,12 @@ titleScreen: PROCEDURE
     NEXT I
 
     FILL_BUFFER(" ")
-    #addr = $3D00
+    #addr = #TITLE_TEMP_ADDRESS
     FOR I = 0 TO 20
         DEFINE VRAM #addr, 32, VARPTR rowBuffer(0)
         #addr = #addr + 32
     NEXT I
-    DEFINE VRAM PLETTER $3D20, 320, titlePipeNamesPletter
+    DEFINE VRAM PLETTER #TITLE_TEMP_ADDRESS + $20, 320, titlePipeNamesPletter
 
     #addr = #VDP_COLOR_TAB1 + 32 * 8
     FOR I = 0 to 63
@@ -38,7 +43,7 @@ titleScreen: PROCEDURE
 
     I = 136
     FOR X = 4 TO 27
-        #addr = $3D20 + XY(X, 3)
+        #addr = #TITLE_TEMP_ADDRESS + XY(X, 4)
         FOR Y = 6 TO 9
             VPOKE #addr, I
             I = I + 1
@@ -46,8 +51,8 @@ titleScreen: PROCEDURE
         NEXT Y
     NEXT X
 
-    VDP_ENABLE_INT
     NAME_TABLE0
+    VDP_ENABLE_INT
 
     #baseAddr = #VDP_COLOR_TAB1
 
@@ -59,7 +64,7 @@ titleScreen: PROCEDURE
         #src = startRow * 32
         FOR Y = 0 TO 10
             IF I + Y < 200 THEN
-                DEFINE VRAM READ $3D00 + #src, 32, VARPTR rowBuffer(0)
+                DEFINE VRAM READ #TITLE_TEMP_ADDRESS + #src, 32, VARPTR rowBuffer(0)
                 DEFINE VRAM #VDP_NAME_TAB + #dest, 32, VARPTR rowBuffer(0)
                 #dest = #dest + 32
             END IF
@@ -102,12 +107,11 @@ titleScreen: PROCEDURE
         IF triggered AND (g_nav = 0) THEN EXIT WHILE
         I = RANDOM(FRAME)
 	WEND
-
-	NAME_TABLE1
-	'VDP_DISABLE_INT
-
 	END
 
+' ==========================================
+' Handle title/logo animation
+' ------------------------------------------
 titleLogoTick: PROCEDURE
     gameFrame = gameFrame + 1
 	' only move the wave every 4 frames
@@ -129,12 +133,6 @@ titleLogoTick: PROCEDURE
 
 titleSine:
 	DATA BYTE 8, 9, 11, 12, 13, 14, 14, 15, 15, 15, 14, 14, 13, 12, 11, 9, 8, 7, 5, 4, 3, 2, 2, 1, 1, 1, 2, 2, 3, 4, 5, 7, 8, 9, 11, 12, 13, 14, 14, 15, 15, 15, 14, 14, 13, 12, 11, 9, 8, 7, 5, 4, 3, 2, 2, 1, 1, 1, 2, 2, 3, 4, 5, 7, 8, 9
-
-pipeVert:
-    DATA BYTE $c0, $c0, $c0, $c0, $c0, $c0, $c0, $c0
-    DATA BYTE $c0, $c0, $c0, $c0, $c0, $c0, $c0, $c0
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00
-    DATA BYTE $00, $00, $00, $00, $00, $00, $00, $00
 
 titleLogoRow0Color:
     DATA BYTE $f5, $f5, $f5, $f5, $f5, $f5, $f5, $f5

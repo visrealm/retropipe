@@ -61,6 +61,8 @@ tilePieceColor:
     DATA BYTE $74, $54, $24, $24, $24, $24, $54, $f4
 '    DATA BYTE $54, $24, $24, $24, $24, $54, $74, $74
 '    DATA BYTE $74, $24, $24, $24, $24, $74, $74, $f4
+tilePieceColorEmpty:
+    DATA BYTE $74, $54, $14, $14, $14, $14, $54, $f4
 
 
 ' SPRITE PATTERNS

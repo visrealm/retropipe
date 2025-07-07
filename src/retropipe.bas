@@ -161,6 +161,7 @@ CONST #SCORE_VRAM_ADDR		= #VDP_FREE_START
 CONST FLOW_COLOR = VDP_MED_GREEN
 
 DIM #progressCount
+DIM #progressBarAddr
 
 progressInit: PROCEDURE
 	#progressCount = 0
@@ -168,13 +169,32 @@ progressInit: PROCEDURE
 	FOR I = 0 TO 7
 		flowAnimBuffer(I) = -1
 	NEXT I
+	#progressBarAddr = #VDP_NAME_TAB1 + (23 * 32) + 12
+	FOR I = 0 TO 31 - 12
+		VPOKE #progressBarAddr + I, 30
+	NEXT I
+	#baseAddr = #VDP_COLOR_TAB3
+	gameFrame = 0
+	GOSUB progressLogoTick
+	GOSUB progressLogoTick
+	END
+
+progressLogoTick: PROCEDURE
+	FOR J = 0 TO 3
+		GOSUB logoTick
+		gameFrame = gameFrame + 1
+	NEXT J
 	END
 
 progressTick: PROCEDURE
-	VPOKE #addr, 31 : #addr = #addr + 1
+	WAIT
+	VPOKE #progressBarAddr, 31 : #progressBarAddr = #progressBarAddr + 1
+	WAIT
+	GOSUB progressLogoTick
+	WAIT
+
 	IF (FRAME - #progressCount) > 25 THEN
 		#progressCount = FRAME
-		FILL_BUFFER(" ")
 .newQuip:		
 		quipIndex = RANDOM(LOADING_STRING_COUNT)
 		FOR I = 0 TO 7
@@ -226,20 +246,23 @@ main:
     DEFINE CHAR PLETTER 0, 24, logoTopPletter
 	DEFINE VRAM #VDP_NAME_TAB1 + 22*32, 12, logoNamesTop
 	DEFINE VRAM #VDP_NAME_TAB1 + 23*32, 12, logoNamesBottom
+	DEFINE CHAR 30, 1, tilePiece
 	DEFINE CHAR 31, 1, tilePiece	' remaining pipes
+	DEFINE COLOR 30, 1, tilePieceColorEmpty
 	DEFINE COLOR 31, 1, tilePieceColor
 
 #if SHOW_TITLE
 	GOSUB titleScreen
 #endif
 
+	GOSUB progressInit
+	WAIT
+	NAME_TABLE1
+
     VDP_ENABLE_INT
 
-	#addr = #VDP_NAME_TAB1 + (23 * 32) + 12
-	DEFINE CHAR 31, 1, tilePiece	' remaining pipes
-
 #if SHOW_TITLE
-	FOR I = 0 TO 254
+	FOR I = 32 TO 254
 		DEFINE COLOR I, 1, defaultColor
 	NEXT I
 	DEFINE COLOR 31, 1, tilePieceColor
@@ -251,10 +274,6 @@ main:
 	GOSUB progressTick
 	DEFINE CHAR PLETTER 96, 32, font2Pletter
 	GOSUB progressTick
-
-	FOR I = 24 TO 30
-		DEFINE COLOR I, 1, fontColor
-	NEXT I
 
 	FOR I = 128 TO 254
 		DEFINE COLOR I, 1, defaultColor
@@ -346,6 +365,8 @@ main:
 
 	currentLevel = 1
 	#score = 0
+
+	#baseAddr = #VDP_COLOR_TAB1
 
 	WHILE 1
 		GOSUB pipeGame
@@ -451,6 +472,8 @@ pipeGame: PROCEDURE
 
 	IF currentStartDelay < 5 THEN currentStartDelay = 5
 
+	WAIT
+	WAIT
 	NAME_TABLE0
 
 	' main game loop
@@ -649,7 +672,7 @@ logoTick: PROCEDURE
 	logoOffset = (logoOffset AND $f) + LOGO_ANIM_SINE_OFFSET - logoStart
 
 	' update the color defs of three tiles
-	#addr = #VDP_COLOR_TAB1 + logoStart * TILE_ROWS
+	#addr = #baseAddr + logoStart * TILE_ROWS
 	FOR I = 0 TO LOGO_ANIM_TILES_PER_FRAME - 1
 		DEFINE VRAM #addr, TILE_ROWS, VARPTR logoColorWhiteGreen(sine(logoOffset - I))
 		#addr = #addr + TILE_ROWS
@@ -1018,7 +1041,7 @@ renderChute: PROCEDURE
 renderChuteCell: PROCEDURE
 	nameX = CHUTE_X
 	nameY = (CHUTE_Y + (g_cell * 3)) - chuteOffset
-	IF nameY > 23 OR  nameY < PLAYFIELD_Y THEN RETURN
+	IF nameY > 23 OR  nameY < (PLAYFIELD_Y - 2) THEN RETURN
 
 	GOSUB renderCell
 	END
@@ -1039,7 +1062,7 @@ renderGameCell: PROCEDURE
 '   INPUTS: g_type, nameX, nameY
 ' ------------------------------------------
 renderCell: PROCEDURE 
-	index = g_type * 9
+	index = g_type * 8 + g_type
 
 	#addr = NAME_TAB_XY(nameX, nameY)
 
