@@ -118,7 +118,7 @@ titleLogoTick: PROCEDURE
 	logoOffset = gameFrame / 4
 
 	' every frame however, we render a quarter of the new wave
-	logoStart = (gameFrame AND 3) * 6
+	logoStart = mulThree((gameFrame AND 3)) * 2
 	logoOffset = (logoOffset AND $1f) + 24 - logoStart
 
     #addr = #baseAddr + (138 * 8)

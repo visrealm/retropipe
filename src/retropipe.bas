@@ -143,7 +143,6 @@ DIM spillSpriteId
 
 CONST SLIDE_MODE = 0
 
-
 ' ==========================================
 ' ENTRY POINT
 ' ------------------------------------------
@@ -155,6 +154,34 @@ GOTO main
 include "vdp-utils.bas"
 include "input.bas"
 include "tiles.bas"
+
+
+' since we have a non-ideal (not pow2) playfield area size
+' added lookup tables for various operations on it
+divNine: ' up to 9 * 7
+	DATA BYTE 0, 0, 0, 0, 0, 0, 0, 0, 0
+	DATA BYTE 1, 1, 1, 1, 1, 1, 1, 1, 1
+	DATA BYTE 2, 2, 2, 2, 2, 2, 2, 2, 2
+	DATA BYTE 3, 3, 3, 3, 3, 3, 3, 3, 3
+	DATA BYTE 4, 4, 4, 4, 4, 4, 4, 4, 4
+	DATA BYTE 5, 5, 5, 5, 5, 5, 5, 5, 5
+	DATA BYTE 6, 6, 6, 6, 6, 6, 6, 6, 6
+modNine:	' up to 9 * 7
+	DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
+	DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
+	DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
+	DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
+	DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
+	DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
+	DATA BYTE 0, 1, 2, 3, 4, 5, 6, 7, 8
+mulThree:	' up to 31
+	DATA BYTE 0, 3, 6, 9, 12, 15, 18, 21
+	DATA BYTE 24, 27, 30, 33, 36, 39, 42, 45
+	DATA BYTE 48, 51, 54, 57, 60, 63, 66, 69
+	DATA BYTE 72, 75, 78, 81, 84, 87, 90, 93
+
+
+
 
 CONST #SCORE_VRAM_ADDR		= #VDP_FREE_START
 
@@ -434,8 +461,8 @@ pipeGame: PROCEDURE
 	currentTileY = RANDOM(PLAYFIELD_HEIGHT - 3) + 2
 	currentIndex = currentTileY * PLAYFIELD_WIDTH + currentTileX
 
-	animNameX = PLAYFIELD_X + (currentIndex % PLAYFIELD_WIDTH) * 3
-	animNameY = PLAYFIELD_Y + (currentIndex / PLAYFIELD_WIDTH) * 3
+	animNameX = PLAYFIELD_X + mulThree(modNine(currentIndex))
+	animNameY = PLAYFIELD_Y + mulThree(divNine(currentIndex))
 	#currentIndexAddr = #VDP_NAME_TAB + XY(animNameX, animNameY)
 
 	' generate the start tile
@@ -668,7 +695,7 @@ logoTick: PROCEDURE
 	logoOffset = gameFrame / 4
 
 	' every frame however, we render a quarter of the new wave
-	logoStart = (gameFrame AND 3) * LOGO_ANIM_TILES_PER_FRAME + LOGO_ANIM_TILE_ID
+	logoStart = mulThree((gameFrame AND 3)) + LOGO_ANIM_TILE_ID
 	logoOffset = (logoOffset AND $f) + LOGO_ANIM_SINE_OFFSET - logoStart
 
 	' update the color defs of three tiles
@@ -729,13 +756,13 @@ flowTick: PROCEDURE
 
 		currentIndex = currentIndex + offsetForFlow2(currentFlowDir)
 
-		currentTileX = currentIndex % PLAYFIELD_WIDTH
-		currentTileY = currentIndex / PLAYFIELD_WIDTH
+		currentTileX = modNine(currentIndex)
+		currentTileY = divNine(currentIndex)
 		IF prevTileX <> currentTileX AND prevTileY <> currentTileY THEN
 			tileId = 0
 		ELSE
-			animNameX = PLAYFIELD_X + currentTileX * 3
-			animNameY = PLAYFIELD_Y + currentTileY * 3
+			animNameX = PLAYFIELD_X + mulThree(currentTileX)
+			animNameY = PLAYFIELD_Y + mulThree(currentTileY)
 			#currentIndexAddr = #VDP_NAME_TAB + XY(animNameX, animNameY)
 			tileId = game(currentIndex) AND CELL_TILE_MASK
 		END IF
@@ -1014,7 +1041,7 @@ placeTile: PROCEDURE
 		chute(I) = chute(I + 1)
 	NEXT I
 	chute(CHUTE_SIZE - 1) = RANDOM(7) + 2
-	g_cell = CHUTE_SIZE - 1
+	g_cell = CHUTE_SIZE
 	g_type = CELL_CLEAR
 	GOSUB renderChuteCell 
 	chuteOffset = 4
@@ -1031,16 +1058,16 @@ placeTile: PROCEDURE
 renderChute: PROCEDURE
 	g_cell = CHUTE_SIZE
 	FOR I = 0 TO CHUTE_SIZE
-		g_cell = g_cell - 1
 		g_type = chute(I)
 		GOSUB renderChuteCell
+		g_cell = g_cell - 1
 	NEXT I
 	END
 	
 
 renderChuteCell: PROCEDURE
 	nameX = CHUTE_X
-	nameY = (CHUTE_Y + (g_cell * 3)) - chuteOffset
+	nameY = (CHUTE_Y + mulThree(g_cell)) - (3 + chuteOffset)
 	IF nameY > 23 OR  nameY < (PLAYFIELD_Y - 2) THEN RETURN
 
 	GOSUB renderCell
@@ -1051,8 +1078,8 @@ renderChuteCell: PROCEDURE
 '   INPUTS: g_cell, g_type
 ' ------------------------------------------
 renderGameCell: PROCEDURE
-	nameX = PLAYFIELD_X + (g_cell % PLAYFIELD_WIDTH) * 3
-	nameY = PLAYFIELD_Y + (g_cell / PLAYFIELD_WIDTH) * 3
+	nameX = PLAYFIELD_X + mulThree(modNine(g_cell))
+	nameY = PLAYFIELD_Y + mulThree(divNine(g_cell))
 
 	GOSUB renderCell
 	END	
@@ -1080,10 +1107,10 @@ renderCell: PROCEDURE
 '   INPUTS: cursorX, cursorY
 ' ------------------------------------------
 updateCursorPos: PROCEDURE
-	spriteX = PLAYFIELD_X * 8 + (cursorX * 24) - 1
-	spriteY = PLAYFIELD_Y * 8 + (cursorY * 24) - 2
+	spriteX = (PLAYFIELD_X + mulThree(cursorX)) * 8 - 1
+	spriteY = (PLAYFIELD_Y + mulThree(cursorY)) * 8 - 2
 	
-	cursorIndex = cursorY * PLAYFIELD_WIDTH + cursorX
+	cursorIndex = cursorY * 8 + cursorY + cursorX
 	END
 
 ' ==========================================
@@ -1099,12 +1126,12 @@ renderCursor: PROCEDURE
 	IF SLIDE_MODE THEN
 		isValid = FALSE
 		IF color <> VDP_MED_RED THEN
-			cursorX = cursorIndex % PLAYFIELD_WIDTH
-			cursorY = cursorIndex / PLAYFIELD_WIDTH
+			cursorX = modNine(cursorIndex)
+			cursorY = divNine(cursorIndex)
 			FOR I = 0 TO 3
 				tempIndex = cursorIndex + offsetForFlow2(I)			
-				tempIndexX = tempIndex % PLAYFIELD_WIDTH
-				tempIndexY = tempIndex / PLAYFIELD_WIDTH
+				tempIndexX = modNine(tempIndex)
+				tempIndexY = divNine(tempIndex)
 				IF NOT (tempIndexX <> cursorX AND tempIndexY <> cursorY) THEN
 					IF game(tempIndex) = CELL_GRID THEN isValid = TRUE
 				END IF
