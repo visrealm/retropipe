@@ -64,9 +64,10 @@ CONST SUBTILE_BL = 64
 CONST SUBTILE_BC = 65
 CONST SUBTILE_BR = 66
 
-CONST GAME_STATE_BUILDING = 0
-CONST GAME_STATE_FLOWING  = 1
-CONST GAME_STATE_ENDED   = 2
+CONST GAME_STATE_BUILDING   = 0
+CONST GAME_STATE_FLOWING    = 1
+CONST GAME_STATE_ENDED      = 2
+CONST GAME_STATE_NEXT_LEVEL = 4
 
 CONST GAME_START_DELAY_SECONDS = 15
 
@@ -93,6 +94,7 @@ CONST EXPLODE_SPRITE_PATT_ID   = CRACK_SPRITE_PATT_ID + CRACK_SPRITE_COUNT
 CONST EXPLODE_SPRITE_COUNT     = 6
 
 ' tile pattern ids
+CONST SCORE_PATT_ID            = 24 ' 24 - 28
 CONST FFWD_PATT_ID             = 96    ' fast forward button
 CONST FFWD_PATT_COUNT          = 12
 CONST PIPES_PATT_ID            = 158   ' inner pipe tiles
@@ -197,7 +199,7 @@ mulThree:  ' I * 3 (up to I = 31)
   DATA BYTE 48, 51, 54, 57, 60, 63, 66, 69
   DATA BYTE 72, 75, 78, 81, 84, 87, 90, 93
 
-
+DEF FN TIMES_NINE(X) = ((X) * 8) + (X)  ' instead of times nine
 
 
 CONST #SCORE_VRAM_ADDR    = #VDP_FREE_START
@@ -357,7 +359,7 @@ main:
   ' score patterns (dynamic rolling digits)
   FOR I = 0 TO 4
     scoreCurrentOffset(I) = 0
-    DEFINE VRAM #VDP_PATT_TAB1 + ((24 + I) * 8), 8, VARPTR digits(0)
+    DEFINE VRAM #VDP_PATT_TAB1 + PATT_OFFSET(SCORE_PATT_ID + I), 8, VARPTR digits(0)
     'DEFINE COLOR 24 + I, 1, digitColor
   NEXT I
   GOSUB progressTick
@@ -461,18 +463,26 @@ pipeGame: PROCEDURE
   chuteOffset = 20
 
   IF SLIDE_MODE THEN
+    J = 255
     FOR I = 0 TO PLAYFIELD_HEIGHT * PLAYFIELD_WIDTH - 1
-      game(I) = RANDOM(7) + 2
+      FOR X = 0 TO game(I - 1) : R = RANDOM(255) : NEXT
+      DO
+        game(I) = RANDOM(7) + 2
+      LOOP WHILE game(I) = J
+      J = game(I)
     NEXT I
+    currentTileX = RANDOM(PLAYFIELD_WIDTH - 6) + 3
+    currentTileY = RANDOM(PLAYFIELD_HEIGHT - 6) + 3
   ELSE
     FOR I = 0 TO PLAYFIELD_HEIGHT * PLAYFIELD_WIDTH - 1
+      FOR X = 0 TO game(I - 1) : R = RANDOM(255) : NEXT
       game(I) = CELL_GRID
     NEXT I
+    currentTileX = RANDOM(PLAYFIELD_WIDTH - 2) + 1
+    currentTileY = RANDOM(PLAYFIELD_HEIGHT - 2) + 1
   END IF
 
   ' start tile position
-  currentTileX = RANDOM(PLAYFIELD_WIDTH - 3) + 2
-  currentTileY = RANDOM(PLAYFIELD_HEIGHT - 3) + 2
   currentIndex = currentTileY * PLAYFIELD_WIDTH + currentTileX
 
   animNameX = PLAYFIELD_X + mulThree(modNine(currentIndex))
@@ -518,37 +528,17 @@ pipeGame: PROCEDURE
   NAME_TABLE0
 
   ' main game loop
-  WHILE 1
+  WHILE gameState <> GAME_STATE_NEXT_LEVEL
     WAIT
 
     if gameFrame = silentFrame THEN SOUND 3,,0
 
-    IF gameState = GAME_STATE_FLOWING THEN
-      GOSUB flowTick
-    ELSEIF gameSeconds = currentStartDelay THEN
-      gameState = GAME_STATE_FLOWING
-      GOSUB renderFfwdButton
-    ELSEIF gameState = GAME_STATE_ENDED THEN
-      IF gameSeconds < 2 THEN
-        chuteOffset = chuteOffset - 1
-        IF remainingPipes THEN
-          GOSUB spillTick
-        END IF
-        GOSUB renderChute
-      ELSEIF gameSeconds = 3 THEN
-        IF remainingPipes = 0 THEN
-          currentLevel = currentLevel + 1
-        ELSE
-          currentLevel = 1
-          #score = 0
-        END IF
-        EXIT WHILE
-      END IF
-    END IF
+    ON gameState FAST GOSUB buildTick, flowTick, endTick
 
     GOSUB uiTick
     GOSUB logoTick
     GOSUB scoreTick
+
     IF isReplacing THEN GOSUB replaceTick
     
     gameFrame = gameFrame + 1 ' not using FRAME to ensure consistency in case of skipped frames
@@ -567,6 +557,35 @@ pipeGame: PROCEDURE
   
   NAME_TABLE1
   END
+
+buildTick: PROCEDURE
+  IF gameSeconds = currentStartDelay THEN
+    gameState = GAME_STATE_FLOWING
+    GOSUB renderFfwdButton
+  END IF
+  END
+
+endTick: PROCEDURE
+  IF gameSeconds < 2 THEN
+    chuteOffset = chuteOffset - 1
+    IF remainingPipes THEN
+      GOSUB spillTick
+    END IF
+    GOSUB renderChute
+  ELSEIF gameSeconds = 3 THEN
+    IF remainingPipes = 0 THEN
+      currentLevel = currentLevel + 1
+    ELSE
+      currentLevel = 1
+      #score = 0
+    END IF
+    gameState = GAME_STATE_NEXT_LEVEL
+  END IF
+  END
+
+nextLevelTick: PROCEDURE
+  END
+
 
 levelEnd: PROCEDURE
   gameState = GAME_STATE_ENDED
@@ -649,9 +668,9 @@ scoreTick: PROCEDURE
   speed = SGN(#diff)
 
   ' is it closer to go the opposite direction?
-  IF dist > 5 * 8 THEN
+  IF dist > TILES_PX(5) THEN
     speed = -speed
-    dist = 10 * 8 - dist
+    dist = TILES_PX(10) - dist
   END IF
   
   ' let's go faster if we're further away
@@ -662,12 +681,12 @@ scoreTick: PROCEDURE
   scoreCurrentOffset(I) = scoreCurrentOffset(I) + speed
 
   IF scoreCurrentOffset(I) < 0 THEN
-    scoreCurrentOffset(I) = 80 + scoreCurrentOffset(I)
-  ELSEIF scoreCurrentOffset(I) > 79 THEN
-    scoreCurrentOffset(I) = scoreCurrentOffset(I) - 80
+    scoreCurrentOffset(I) = 10 * TILE_SIZE + scoreCurrentOffset(I)
+  ELSEIF scoreCurrentOffset(I) > 10 * TILE_SIZE - 1 THEN
+    scoreCurrentOffset(I) = scoreCurrentOffset(I) - 10 * TILE_SIZE
   END IF
 
-  DEFINE VRAM #VDP_PATT_TAB1 + (24 + I) * 8, 8, VARPTR digits(scoreCurrentOffset(I))
+  DEFINE VRAM #VDP_PATT_TAB1 + (SCORE_PATT_ID + I) * TILE_SIZE, TILE_SIZE, VARPTR digits(scoreCurrentOffset(I))
   END
 
 
@@ -683,7 +702,7 @@ updateScore: PROCEDURE
 
   ' offset to pattern index
   FOR I = 0 TO 4
-    scoreDesiredOffset(I) = (scoreDesiredOffset(I) - 48) * 8
+    scoreDesiredOffset(I) = PATT_OFFSET(scoreDesiredOffset(I) - "0")
   NEXT I
 
   #addr = NAME_TAB_XY(31 - remainingPipes, 2)
@@ -814,8 +833,8 @@ flowTick: PROCEDURE
     DEFINE VRAM #VDP_SPRITE_PATT + FLOW_SPRITE_PATT_ID * 32, 8, VARPTR flowAnimBuffer(0)
     SPRITE FLOW_SPRITE_ID, animSprY - 1, animSprX, FLOW_SPRITE_PATT_ID * 4, VDP_TRANSPARENT
   ELSE
-    animSprX = (animNameX + (currentSubTile AND 3)) * 8
-    animSprY = (animNameY + (currentSubTile / NAME_TABLE_WIDTH)) * 8
+    animSprX = TILES_PX(animNameX + (currentSubTile AND 3))
+    animSprY = TILES_PX(animNameY + (currentSubTile / NAME_TABLE_WIDTH))
 
     DEFINE VRAM #VDP_SPRITE_PATT + FLOW_SPRITE_PATT_ID * 32, 8, VARPTR flowAnimBuffer(0)
     SPRITE FLOW_SPRITE_ID, animSprY - 1, animSprX, FLOW_SPRITE_PATT_ID * 4, FLOW_COLOR
@@ -855,7 +874,7 @@ flowTick: PROCEDURE
 
 ' generate dynamic sprite pattern data for turning liquid flow
 .flowSpriteCorner: PROCEDURE
-  offset = animSubStep * 8
+  offset = animSubStep * TILE_SIZE
   SELECT CASE currentAnim
     CASE ANIM_FLOW_RIGHT_UP
       FOR I = 0 TO 7
@@ -1051,6 +1070,7 @@ placeTile: PROCEDURE
   FOR I = 0 TO CHUTE_SIZE - 2
     chute(I) = chute(I + 1)
   NEXT I
+  FOR X = 0 TO chute(3) : R = RANDOM(255) : NEXT
   chute(CHUTE_SIZE - 1) = RANDOM(7) + 2
   g_cell = CHUTE_SIZE
   g_type = CELL_CLEAR
@@ -1100,7 +1120,7 @@ renderGameCell: PROCEDURE
 '   INPUTS: g_type, nameX, nameY
 ' ------------------------------------------
 renderCell: PROCEDURE 
-  index = g_type * 8 + g_type
+  index = g_type * TILE_SIZE + g_type
 
   #addr = NAME_TAB_XY(nameX, nameY)
 
@@ -1118,10 +1138,10 @@ renderCell: PROCEDURE
 '   INPUTS: cursorX, cursorY
 ' ------------------------------------------
 updateCursorPos: PROCEDURE
-  spriteX = (PLAYFIELD_X + mulThree(cursorX)) * 8 - 1
-  spriteY = (PLAYFIELD_Y + mulThree(cursorY)) * 8 - 2
+  spriteX = TILES_PX(PLAYFIELD_X + mulThree(cursorX)) - 1
+  spriteY = TILES_PX(PLAYFIELD_Y + mulThree(cursorY)) - 2
   
-  cursorIndex = cursorY * 8 + cursorY + cursorX
+  cursorIndex = TIMES_NINE(cursorY) + cursorX
   END
 
 ' ==========================================
@@ -1158,7 +1178,7 @@ renderCursor: PROCEDURE
   ' hide cursor if games ends
   IF (gameState = GAME_STATE_ENDED) OR hoverFfwd THEN
      color = VDP_TRANSPARENT
-     spriteY = -24
+     spriteY = -30
   END IF
 
   ' render the four cursor corners
