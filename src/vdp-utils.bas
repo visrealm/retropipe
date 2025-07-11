@@ -101,10 +101,15 @@ vdpDetect: PROCEDURE
     VDP_REG($37) = $00                       ' set gpu start address lsb (triggers)
     isF18ACompatible = VPEEK($3F00) = 0      ' check result
     isV9938 = FALSE
+    isPICO9918 = FALSE
     IF isF18ACompatible = FALSE THEN
-        VDP_STATUS_REG = 4
-        isV9938 = ((VDP_STATUS AND $fe) = $fe)
-        VDP_STATUS_REG0
+      VDP_STATUS_REG = 4
+      isV9938 = ((VDP_STATUS AND $fe) = $fe)
+      VDP_STATUS_REG0
+    ELSE
+      VDP_STATUS_REG = 1
+      isPICO9918 = ((VDP_STATUS AND $e8) = $e8)
+      VDP_STATUS_REG0
     END IF
     IF isV9938 THEN ' avoid warning
     END IF

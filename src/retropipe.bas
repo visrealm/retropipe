@@ -20,6 +20,7 @@ CONST PLAYFIELD_X = 5
 CONST PLAYFIELD_Y = 3
 CONST PLAYFIELD_WIDTH = 9
 CONST PLAYFIELD_HEIGHT = 7
+CONST GAME_TILE_SIZE = 3
 
 CONST CHUTE_X = 1
 CONST CHUTE_Y = 3
@@ -94,17 +95,27 @@ CONST EXPLODE_SPRITE_PATT_ID   = CRACK_SPRITE_PATT_ID + CRACK_SPRITE_COUNT
 CONST EXPLODE_SPRITE_COUNT     = 6
 
 ' tile pattern ids
-CONST SCORE_PATT_ID            = 24 ' 24 - 28
-CONST FFWD_PATT_ID             = 96    ' fast forward button
+CONST LOGO_PATT_ID             = 0  ' top-left logo
+CONST LOGO_WIDTH               = 12 ' 12 tiles wide by 2 rows
+CONST SCORE_PATT_ID            = 24 ' score digits (24-28)
+CONST EMPTY_TILE_ID            = 30 ' small tile icon (empty)
+CONST FILLED_TILE_ID           = 31 ' small tile icon (filled)
+CONST FFWD_PATT_ID             = 96 ' fast forward button (6x normal + 6x hover)
 CONST FFWD_PATT_COUNT          = 12
+CONST TILES_EMPTY_PATT_ID      = 128
+CONST TILES_FILLED_PATT_ID     = 137
 CONST PIPES_PATT_ID            = 158   ' inner pipe tiles
 CONST PIPES_PATT_COUNT         = 10
 CONST PIPES_FILLED_PATT_ID     = PIPES_PATT_ID + PIPES_PATT_COUNT
 CONST CHUTE_BORDERS_PATT_ID    = 178   ' chute ui tiles
 CONST CHUTE_BORDERS_COUNT      = 7
+CONST BORDER_LEFT_PATT_ID      = 183
+CONST BORDER_TOP_PATT_ID       = 184
 
 CONST LOADING_STRING_COUNT     = 10
 CONST LOADING_STRING_LEN       = 20
+
+CONST SCORE_LEN                = 5
 
 CONST POINTS_BUILD             = 100
 CONST POINTS_REPLACE_DEDUCT    = 50
@@ -120,6 +131,7 @@ CONST TRUE  = -1
 DIM chute(CHUTE_SIZE + 1)
 DIM game(PLAYFIELD_WIDTH * PLAYFIELD_HEIGHT)
 DIM #score
+DIM #hiscore
 DIM chuteOffset
 
 DIM gameState
@@ -158,6 +170,8 @@ DIM savedNav
 DIM spillSpriteId
 
 CONST SLIDE_MODE = 0
+DIM programBlockId(4)
+
 
 ' ==========================================
 ' ENTRY POINT
@@ -199,7 +213,11 @@ mulThree:  ' I * 3 (up to I = 31)
   DATA BYTE 48, 51, 54, 57, 60, 63, 66, 69
   DATA BYTE 72, 75, 78, 81, 84, 87, 90, 93
 
-DEF FN TIMES_NINE(X) = ((X) * 8) + (X)  ' instead of times nine
+DEF FN TIMES_NINE(X) = ((X) * 8) + (X)  ' instead of X * 9
+
+' branchless ternary operator which returns 0 in the other case
+DEF FN IIF(E, V)  = (((E) <> 0) AND (V))  ' equivalent to: E ? V : 0
+DEF FN IIFN(E, V) = (((E) = 0) AND (V))   ' equivalent to: E ? 0 : V
 
 
 CONST #SCORE_VRAM_ADDR    = #VDP_FREE_START
@@ -213,8 +231,8 @@ progressInit: PROCEDURE
   #progressCount = 0
   flowAnimTemp = 0
   #progressBarAddr = NAME_TAB1_XY(12, 23)
-  FILL_BUFFER(30)
-  DEFINE VRAM #progressBarAddr, 32-12, VARPTR rowBuffer(0)
+  FILL_BUFFER(EMPTY_TILE_ID)
+  DEFINE VRAM #progressBarAddr, NAME_TABLE_WIDTH - LOGO_WIDTH, VARPTR rowBuffer(0)
   #baseAddr = #VDP_COLOR_TAB3
   DEFINE VRAM PLETTER $1F00, LOADING_STRING_LEN * LOADING_STRING_COUNT, loadingStringsPletter
   GOSUB progressLogoTick
@@ -246,7 +264,12 @@ progressTick: PROCEDURE
   END IF
   END
 
-
+dataHeader:
+DATA BYTE $ff, $ff, $ff, $ff  ' Block Id (unknown)
+DATA BYTE $D0, $F2, $EA, $45, $2D, $9B, $A3, $44, $A8, $65, $7C, $13, $C7, $89, $9F, $4B  ' GUID
+DATA BYTE "RetroPIPE       "  ' name
+DATA $0000  ' default high score
+' 40 bytes
 
 ' ==========================================
 ' ACTUAL ENTRY POINT
@@ -254,7 +277,8 @@ progressTick: PROCEDURE
 main:
   vdpR1Flags = $02
     ' what are we working with?
-'    GOSUB vdpDetect
+   GOSUB vdpDetect
+
   'VDP_REG(50) = $80  ' reset VDP registers to boot values
   VDP_REG(7) = defaultReg(7)
   VDP_REG(0) = defaultReg(0)  ' VDP_REG() doesn't accept variables, so...
@@ -275,6 +299,9 @@ main:
   SPRITE FLICKER OFF  ' the CVB sprite flicker routine messes with things. turn it off
 
 '  VDP_DISABLE_INT
+
+  ' Set program data block to unknown
+  FOR I = 0 TO 3 : programBlockId(I) = $ff : NEXT I
 
   DEFINE CHAR PLETTER 64, 32, font1Pletter
   DEFINE CHAR PLETTER 32, 32, font0Pletter
@@ -315,35 +342,28 @@ main:
   GOSUB progressTick
   DEFINE CHAR PLETTER 32, 32, font0Pletter
   GOSUB progressTick
-  'DEFINE CHAR PLETTER 96, 32, font2Pletter
-  'GOSUB progressTick
 #endif
-
-
+  IF isPICO9918 THEN
+    PRINT AT NAME_TAB1_XY(0,0), "PICO9918 DETECTED"
+  ELSEIF isF18ACompatible THEN
+    PRINT AT NAME_TAB1_XY(0,0), "F18A DETECTED"
+  END IF
 
   ' title / logo patterns
-
-  DEFINE CHAR PLETTER 128, 30, gridPletter
-
-  GOSUB progressTick
-
-  DEFINE COLOR PLETTER 128, 18, gridColorPletter
-
-  GOSUB progressTick
+  DEFINE CHAR PLETTER 128, 30, gridPletter       : GOSUB progressTick
+  DEFINE COLOR PLETTER 128, 18, gridColorPletter : GOSUB progressTick
 
   ' tile patterns and colors
-  FOR I = 137 TO 175
+  FOR I = TILES_FILLED_PATT_ID TO TILES_FILLED_PATT_ID + 38
       DEFINE COLOR I, 1, baseColor
   NEXT I
 
   GOSUB progressTick
 
-    DEFINE CHAR PLETTER PIPES_PATT_ID, PIPES_PATT_COUNT, pipesPletter  ' empty pipes
-
+  DEFINE CHAR PLETTER PIPES_PATT_ID, PIPES_PATT_COUNT, pipesPletter  ' empty pipes
   GOSUB progressTick
 
-    DEFINE CHAR PLETTER PIPES_FILLED_PATT_ID, PIPES_PATT_COUNT, pipesPletter  ' full pipes
-
+  DEFINE CHAR PLETTER PIPES_FILLED_PATT_ID, PIPES_PATT_COUNT, pipesPletter  ' full pipes
   GOSUB progressTick
 
   FOR I = PIPES_PATT_ID TO PIPES_PATT_ID + PIPES_PATT_COUNT - 1
@@ -357,23 +377,22 @@ main:
   GOSUB progressTick
 
   ' score patterns (dynamic rolling digits)
-  FOR I = 0 TO 4
+  FOR I = 0 TO SCORE_LEN - 1
     scoreCurrentOffset(I) = 0
     DEFINE VRAM #VDP_PATT_TAB1 + PATT_OFFSET(SCORE_PATT_ID + I), 8, VARPTR digits(0)
-    'DEFINE COLOR 24 + I, 1, digitColor
   NEXT I
   GOSUB progressTick
 
 
-  ' gamefield patterns
-    DEFINE CHAR PLETTER CHUTE_BORDERS_PATT_ID, CHUTE_BORDERS_COUNT, bordersPletter
+' gamefield patterns
+  DEFINE CHAR PLETTER CHUTE_BORDERS_PATT_ID, CHUTE_BORDERS_COUNT, bordersPletter
 
   GOSUB progressTick
 
   ' set up the name table
   ' ------------------------------
-  DEFINE VRAM NAME_TAB_XY(0, 0), 12, logoNamesTop
-  DEFINE VRAM NAME_TAB_XY(0, 1), 12, logoNamesBottom
+  DEFINE VRAM NAME_TAB_XY(0, 0), LOGO_WIDTH, logoNamesTop
+  DEFINE VRAM NAME_TAB_XY(0, 1), LOGO_WIDTH, logoNamesBottom
 
   GOSUB progressTick
 
@@ -386,39 +405,89 @@ main:
 
   GOSUB progressTick
 
-  FOR I = CHUTE_BOTTOM + 1 TO 23
-    PUT_XY(4, I), 183
+  FOR I = CHUTE_BOTTOM + 1 TO NAME_TABLE_HEIGHT - 1
+    PUT_XY(4, I), BORDER_LEFT_PATT_ID
   NEXT I
 
   GOSUB progressTick
 
   ' sprite patterns
-  DEFINE SPRITE PLETTER CURSOR_SPRITE_PATT_ID, CURSOR_SPRITE_COUNT, cursorSpritesPletter
-  GOSUB progressTick
-  DEFINE SPRITE PLETTER SPILL_SPRITE_PATT_ID, SPILL_SPRITE_COUNT, spillPattPletter
-  GOSUB progressTick
-  DEFINE SPRITE PLETTER CRACK_SPRITE_PATT_ID, CRACK_SPRITE_COUNT, crackPattPletter
-  GOSUB progressTick
-  DEFINE SPRITE PLETTER EXPLODE_SPRITE_PATT_ID, EXPLODE_SPRITE_COUNT, explodePattPletter
-  GOSUB progressTick
+  DEFINE SPRITE PLETTER CURSOR_SPRITE_PATT_ID, CURSOR_SPRITE_COUNT, cursorSpritesPletter  :  GOSUB progressTick
+  DEFINE SPRITE PLETTER SPILL_SPRITE_PATT_ID, SPILL_SPRITE_COUNT, spillPattPletter        :  GOSUB progressTick
+  DEFINE SPRITE PLETTER CRACK_SPRITE_PATT_ID, CRACK_SPRITE_COUNT, crackPattPletter        :  GOSUB progressTick
+  DEFINE SPRITE PLETTER EXPLODE_SPRITE_PATT_ID, EXPLODE_SPRITE_COUNT, explodePattPletter  :  GOSUB progressTick
 
-  DEFINE VRAM PLETTER #VDP_PATT_TAB3 + (FFWD_PATT_ID * TILE_SIZE), FFWD_PATT_COUNT * TILE_SIZE, ffwdPattPletter
-  DEFINE VRAM PLETTER #VDP_COLOR_TAB3 + (FFWD_PATT_ID * TILE_SIZE), FFWD_PATT_COUNT * TILE_SIZE, ffwdColorPletter
-
+  DEFINE VRAM PLETTER #VDP_PATT_TAB3 + PATT_OFFSET(FFWD_PATT_ID), FFWD_PATT_COUNT * TILE_SIZE, ffwdPattPletter
+  DEFINE VRAM PLETTER #VDP_COLOR_TAB3 + PATT_OFFSET(FFWD_PATT_ID), FFWD_PATT_COUNT * TILE_SIZE, ffwdColorPletter
   GOSUB progressTick
 
   currentLevel = 1
   #score = 0
 
+
+  #hiscore = 0
+  GOSUB readProgramData
+  
   #baseAddr = #VDP_COLOR_TAB1
 
   WHILE 1
     GOSUB pipeGame
   WEND
 
+CONST #PROGDATA_ADDR         = $1F00
+CONST PROGDATA_HEADER_BYTES  = 4 + 16 + 16
+CONST #PROGDATA_HISCORE_ADDR = #PROGDATA_ADDR + PROGDATA_HEADER_BYTES
+CONST PROGDATA_BYTES         = 2
+
+readProgramData: PROCEDURE
+  IF NOT isPICO9918 THEN RETURN
+
+  VDP_DISABLE_INT
+  DEFINE VRAM #PROGDATA_ADDR, PROGDATA_HEADER_BYTES + PROGDATA_BYTES, dataHeader ' load default data block
+  DEFINE VRAM #PROGDATA_ADDR, 4, VARPTR programBlockId(0)                        ' overwrite known program block
+  R = 0
+  FWST = $1F
+  VDP(63) = FWST ' read program data into $1f00
+  DO 
+      VDP_STATUS_REG = 2
+      FWST = VDP_STATUS
+      VDP_STATUS_REG0
+      R = R + 1
+  LOOP WHILE (FWST AND $80)
+
+  DEFINE VRAM READ #PROGDATA_ADDR, 4, VARPTR programBlockId(0)  ' read actual blockId back
+  
+  #hiscore = VPEEK (#PROGDATA_HISCORE_ADDR) * 256
+  #hiscore = #hiscore + VPEEK(#PROGDATA_HISCORE_ADDR + 1)
+  VDP_ENABLE_INT
+  END
+
+
+writeProgramData: PROCEDURE
+  IF NOT isPICO9918 THEN RETURN  
+
+  VDP_DISABLE_INT
+  DEFINE VRAM #PROGDATA_ADDR, PROGDATA_HEADER_BYTES, dataHeader    ' load in main header
+  DEFINE VRAM #PROGDATA_ADDR, 4, VARPTR programBlockId(0)          ' overwrite known program block
+  VPOKE #PROGDATA_HISCORE_ADDR, #hiscore / 256
+  VPOKE #PROGDATA_HISCORE_ADDR + 1, #hiscore * 256 / 256  ' this looks weird, but "#hiscore AND $ff" doesn't work on TI-99??
+
+  FWST = $9f
+  VDP(63) = FWST ' write program data into $1f00
+  DO 
+      VDP_STATUS_REG = 2
+      FWST = VDP_STATUS
+      VDP_STATUS_REG0
+      R = R + 1
+  LOOP WHILE (FWST AND $80)
+  VDP_ENABLE_INT
+  END
+
+
 pipeGame: PROCEDURE
-  cursorX = 4
-  cursorY = 3
+  cursorX = PLAYFIELD_WIDTH / 2
+  cursorY = PLAYFIELD_HEIGHT / 2
+
   remainingPipes = 13 + currentLevel
   IF remainingPipes > 24 THEN remainingPipes = 24
 
@@ -435,8 +504,8 @@ pipeGame: PROCEDURE
   levelSpeed = currentSpeed
 
   ' horizontal top border
-  FILL_BUFFER(184)
-  DEFINE VRAM NAME_TAB_XY(0, 2), 31, VARPTR rowBuffer(0)
+  FILL_BUFFER(BORDER_TOP_PATT_ID)
+  DEFINE VRAM NAME_TAB_XY(0, 2), 32, VARPTR rowBuffer(0)
 
   GOSUB updateCursorPos
 
@@ -457,8 +526,13 @@ pipeGame: PROCEDURE
   chute(CHUTE_SIZE) = CELL_CLEAR
 
   PRINT AT XY(20,0), "LEVEL: ", currentLevel
-  PRINT AT XY(20,1), "SCORE: \24\25\26\27\28"
-  GOSUB updateScore
+
+  IF #hiscore > 0 THEN  
+    PRINT AT XY(20,1), " BEST: ", <5>#hiscore
+  ELSE
+    GOSUB updateScore
+  END IF
+
 
   chuteOffset = 20
 
@@ -559,7 +633,9 @@ pipeGame: PROCEDURE
   END
 
 buildTick: PROCEDURE
-  IF gameSeconds = currentStartDelay THEN
+  IF gameSeconds = 3 THEN
+    GOSUB updateScore
+  ELSEIF gameSeconds = currentStartDelay THEN
     gameState = GAME_STATE_FLOWING
     GOSUB renderFfwdButton
   END IF
@@ -576,6 +652,10 @@ endTick: PROCEDURE
     IF remainingPipes = 0 THEN
       currentLevel = currentLevel + 1
     ELSE
+      IF #score > #hiscore THEN
+        #hiscore = #score
+        GOSUB writeProgramData
+      END IF
       currentLevel = 1
       #score = 0
     END IF
@@ -654,7 +734,7 @@ DATA BYTE 4, -2, 4, 10
 ' Handle score animation
 ' ------------------------------------------
 scoreTick: PROCEDURE
-  FOR I = 0 TO 4
+  FOR I = 0 TO SCORE_LEN - 1
     IF scoreCurrentOffset(I) <> scoreDesiredOffset(I) THEN
       GOSUB .rollDigit
     END IF
@@ -686,7 +766,7 @@ scoreTick: PROCEDURE
     scoreCurrentOffset(I) = scoreCurrentOffset(I) - 10 * TILE_SIZE
   END IF
 
-  DEFINE VRAM #VDP_PATT_TAB1 + (SCORE_PATT_ID + I) * TILE_SIZE, TILE_SIZE, VARPTR digits(scoreCurrentOffset(I))
+  DEFINE VRAM #VDP_PATT_TAB1 + PATT_OFFSET(SCORE_PATT_ID + I), TILE_SIZE, VARPTR digits(scoreCurrentOffset(I))
   END
 
 
@@ -698,16 +778,18 @@ updateScore: PROCEDURE
   PRINT AT #SCORE_VRAM_ADDR, <5>#score
 
   ' copy from vram to ram
-  DEFINE VRAM READ #SCORE_VRAM_ADDR, 5, VARPTR scoreDesiredOffset(0)
+  DEFINE VRAM READ #SCORE_VRAM_ADDR, SCORE_LEN, VARPTR scoreDesiredOffset(0)
+  PRINT AT XY(20,1), "SCORE: \24\25\26\27\28"
 
   ' offset to pattern index
-  FOR I = 0 TO 4
+  FOR I = 0 TO SCORE_LEN - 1
     scoreDesiredOffset(I) = PATT_OFFSET(scoreDesiredOffset(I) - "0")
   NEXT I
 
+  ' update the remaining pipes tiles in the header
   #addr = NAME_TAB_XY(31 - remainingPipes, 2)
-  IF remainingPipes THEN FILL_BUFFER(31)
-  rowBuffer(0) = 184
+  IF remainingPipes THEN FILL_BUFFER(FILLED_TILE_ID)
+  rowBuffer(0) = BORDER_TOP_PATT_ID
   DEFINE VRAM #addr, remainingPipes + 1, VARPTR rowBuffer(0)
 
   END
@@ -717,7 +799,7 @@ updateScore: PROCEDURE
 ' Handle title/logo animation
 ' ------------------------------------------
 logoTick: PROCEDURE
-  CONST LOGO_ANIM_TILE_ID         = 12
+  CONST LOGO_ANIM_TILE_ID         = LOGO_PATT_ID + LOGO_WIDTH
   CONST LOGO_ANIM_TILES_PER_FRAME = 3
   CONST LOGO_ANIM_SINE_OFFSET     = 23
 
@@ -729,7 +811,7 @@ logoTick: PROCEDURE
   logoOffset = (logoOffset AND $f) + LOGO_ANIM_SINE_OFFSET - logoStart
 
   ' update the color defs of three tiles
-  #addr = #baseAddr + logoStart * TILE_SIZE
+  #addr = #baseAddr + PATT_OFFSET(logoStart)
   FOR I = 0 TO LOGO_ANIM_TILES_PER_FRAME - 1
     DEFINE VRAM #addr, TILE_SIZE, VARPTR logoColorWhiteGreen(sine(logoOffset - I))
     #addr = #addr + TILE_SIZE
@@ -809,7 +891,7 @@ flowTick: PROCEDURE
     GOTO .startFlow
   END IF
 
-  currentIndexPattId = (VPEEK(#currentIndexAddr + currentSubTile) - PIPES_PATT_ID) * TILE_SIZE
+  currentIndexPattId = PATT_OFFSET(VPEEK(#currentIndexAddr + currentSubTile) - PIPES_PATT_ID)
 
   IF skipAnim AND (currentSubTile = SUBTILE_MC) THEN
     ' do nothing
@@ -846,7 +928,7 @@ flowTick: PROCEDURE
 
 ' generate dynamic sprite pattern data for H/V liquid flow
 .flowSpriteStraight: PROCEDURE
-  CONST #TILE_BASE_ADDR = #VDP_PATT_TAB1 + (PIPES_PATT_ID * TILE_SIZE)
+  CONST #TILE_BASE_ADDR = #VDP_PATT_TAB1 + PATT_OFFSET(PIPES_PATT_ID)
   SELECT CASE currentFlowDir
     CASE FLOW_LEFT
       flowAnimTemp = (flowAnimTemp * 2) OR $01
@@ -1120,14 +1202,14 @@ renderGameCell: PROCEDURE
 '   INPUTS: g_type, nameX, nameY
 ' ------------------------------------------
 renderCell: PROCEDURE 
-  index = g_type * TILE_SIZE + g_type
+  index = TIMES_NINE(g_type)  ' 3x3 tiles per game tile
 
   #addr = NAME_TAB_XY(nameX, nameY)
 
-  FOR J = 0 TO 2
+  FOR J = 0 TO GAME_TILE_SIZE - 1
     IF nameY >= NAME_TABLE_HEIGHT THEN RETURN
-    IF nameY >= PLAYFIELD_Y THEN DEFINE VRAM #addr, 3, VARPTR cellNames(index)
-    index = index + 3
+    IF nameY >= PLAYFIELD_Y THEN DEFINE VRAM #addr, GAME_TILE_SIZE, VARPTR cellNames(index)
+    index = index + GAME_TILE_SIZE
     nameY = nameY + 1
     #addr = #addr + NAME_TABLE_WIDTH
   NEXT J
@@ -1151,7 +1233,7 @@ renderCursor: PROCEDURE
   CONST CURSOR_SIZE   = 33
   CONST CURSOR_SPREAD = CURSOR_SIZE - 16
 
-  ' flashing cursor
+  ' flashing cursor every 8 frames
   color = VDP_WHITE
   IF gameFrame AND 8 THEN color = VDP_GREY
 
@@ -1183,19 +1265,16 @@ renderCursor: PROCEDURE
 
   ' render the four cursor corners
   FOR I = 0 TO 3
-    SPRITE CURSOR_SPRITE_ID + I, spriteY + .cursorSpread(I), spriteX + .cursorSpread(I / 2), CURSOR_SPRITE_PATT_ID + I * 4, color
+    SPRITE CURSOR_SPRITE_ID + I, spriteY + IIF(I AND 1, CURSOR_SPREAD), spriteX + IIF(I / 2, CURSOR_SPREAD), CURSOR_SPRITE_PATT_ID + I * 4, color
   NEXT I
   END
-
-.cursorSpread:
-  DATA BYTE 0, CURSOR_SPREAD, 0, CURSOR_SPREAD
 
 ' ==========================================
 ' Render the fast forward button
 ' ------------------------------------------
 renderFfwdButton: PROCEDURE
   FOR J = 0 TO FFWD_PATT_COUNT - 1
-    rowBuffer(J) = J + FFWD_PATT_ID + (hoverFfwd AND 6)
+    rowBuffer(J) = J + FFWD_PATT_ID + (hoverFfwd AND 6) ' hoverFFwd will either be FALSE($00) OR TRUE($ff), so we're adding 0 or 6
   NEXT J
   DEFINE VRAM NAME_TAB_XY(1, CHUTE_BOTTOM + 1), 3, VARPTR rowBuffer(0)
   DEFINE VRAM NAME_TAB_XY(1, CHUTE_BOTTOM + 2), 3, VARPTR rowBuffer(3)
