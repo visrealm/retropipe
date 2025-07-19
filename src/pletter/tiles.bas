@@ -33,20 +33,16 @@ grid:
     DATA BYTE $25, $49, $93, $25, $49, $93, $25, $FE    ' BR
 
 'base corners when pipes around (146)
-'baseCornersTL
-    DATA BYTE $49, $92, $24, $49, $92, $24, $49, $F2    ' H
+    DATA BYTE $49, $92, $24, $49, $92, $24, $49, $F2    ' H - TL
     DATA BYTE $49, $93, $25, $49, $92, $24, $49, $92    ' V
     DATA BYTE $49, $93, $25, $49, $92, $24, $49, $F2    ' X
-'baseCornersTR (149)
-    DATA BYTE $93, $25, $49, $93, $25, $49, $93, $27    ' H
+    DATA BYTE $93, $25, $49, $93, $25, $49, $93, $27    ' H - TR
     DATA BYTE $93, $A5, $C9, $93, $25, $49, $93, $25    ' V
     DATA BYTE $93, $A5, $C9, $93, $25, $49, $93, $27    ' X
-'baseCornersBL (152)
-    DATA BYTE $F2, $24, $49, $92, $24, $49, $92, $FF    ' H
+    DATA BYTE $F2, $24, $49, $92, $24, $49, $92, $FF    ' H - BL
     DATA BYTE $92, $24, $49, $92, $24, $49, $93, $FF    ' V
     DATA BYTE $F2, $24, $49, $92, $24, $49, $93, $FF    ' X
-'baseCornersBR (155)
-    DATA BYTE $27, $49, $93, $25, $49, $93, $25, $FE    ' H
+    DATA BYTE $27, $49, $93, $25, $49, $93, $25, $FE    ' H - BR
     DATA BYTE $25, $49, $93, $25, $49, $93, $A5, $FE    ' V
     DATA BYTE $27, $49, $93, $25, $49, $93, $A5, $FE    ' X
 

@@ -111,6 +111,21 @@ CONST CHUTE_BORDERS_PATT_ID    = 178   ' chute ui tiles
 CONST CHUTE_BORDERS_COUNT      = 7
 CONST BORDER_LEFT_PATT_ID      = 183
 CONST BORDER_TOP_PATT_ID       = 184
+CONST UI_DIALOG_PATT_ID        = CHUTE_BORDERS_PATT_ID + CHUTE_BORDERS_COUNT
+CONST UI_DIALOG_COUNT          = 11
+CONST UI_TOP_LEFT              = UI_DIALOG_PATT_ID
+CONST UI_TOP_CENTRE            = UI_DIALOG_PATT_ID + 1
+CONST UI_TOP_RIGHT             = UI_DIALOG_PATT_ID + 2
+CONST UI_MIDDLE_LEFT           = UI_DIALOG_PATT_ID + 3
+CONST UI_MIDDLE_CENTRE         = UI_DIALOG_PATT_ID + 4
+CONST UI_MIDDLE_RIGHT          = UI_DIALOG_PATT_ID + 5
+CONST UI_BOTTOM_LEFT           = UI_DIALOG_PATT_ID + 6
+CONST UI_BOTTOM_CENTRE         = UI_DIALOG_PATT_ID + 7
+CONST UI_BOTTOM_RIGHT          = UI_DIALOG_PATT_ID + 8
+CONST UI_HORZ_LEFT             = UI_DIALOG_PATT_ID + 9
+CONST UI_HORZ                  = UI_DIALOG_PATT_ID + 1  ' TC
+CONST UI_HORZ_RIGHT            = UI_DIALOG_PATT_ID + 10
+
 
 CONST LOADING_STRING_COUNT     = 10
 CONST LOADING_STRING_LEN       = 20
@@ -369,11 +384,14 @@ main:
   FOR I = PIPES_PATT_ID TO PIPES_PATT_ID + PIPES_PATT_COUNT - 1
       DEFINE COLOR I, 1, pipeColor
   NEXT I
-  GOSUB progressTick
-
   FOR I = PIPES_FILLED_PATT_ID TO PIPES_FILLED_PATT_ID + PIPES_PATT_COUNT - 1
       DEFINE COLOR I, 1, pipeColorGreen
   NEXT I
+  GOSUB progressTick
+
+  DEFINE CHAR PLETTER UI_DIALOG_PATT_ID, UI_DIALOG_COUNT, uiTilesPletter
+  DEFINE COLOR PLETTER UI_DIALOG_PATT_ID, UI_DIALOG_COUNT, uiTilesColorPletter
+
   GOSUB progressTick
 
   ' score patterns (dynamic rolling digits)
@@ -464,7 +482,9 @@ readProgramData: PROCEDURE
 
 
 writeProgramData: PROCEDURE
-  IF NOT isPICO9918 THEN RETURN  
+  IF NOT isPICO9918 THEN RETURN
+
+  ' TODO: version check?
 
   VDP_DISABLE_INT
   DEFINE VRAM #PROGDATA_ADDR, PROGDATA_HEADER_BYTES, dataHeader    ' load in main header
@@ -649,6 +669,9 @@ endTick: PROCEDURE
     END IF
     GOSUB renderChute
   ELSEIF gameSeconds = 3 THEN
+    GOSUB levelEndDialog
+    gameSeconds = 4
+  ELSEIF gameSeconds = 10 THEN
     IF remainingPipes = 0 THEN
       currentLevel = currentLevel + 1
     ELSE
@@ -663,9 +686,41 @@ endTick: PROCEDURE
   END IF
   END
 
-nextLevelTick: PROCEDURE
+CONST DIALOG_WIDTH = 15
+CONST DIALOG_X = 10
+CONST DIALOG_Y = 7
+levelEndDialog: PROCEDURE
+  SPRITE SPILL_SPRITE_ID, 0, -30, 4, VDP_TRANSPARENT
+  FILL_BUFFER(UI_MIDDLE_CENTRE)
+  rowBuffer(0) = UI_MIDDLE_LEFT
+  rowBuffer(DIALOG_WIDTH - 1) = UI_MIDDLE_RIGHT
+  FOR I = DIALOG_Y + 1 TO DIALOG_Y + 7
+    DEFINE VRAM NAME_TAB_XY(DIALOG_X, I), DIALOG_WIDTH, VARPTR rowBuffer(0)
+  NEXT I
+  FILL_BUFFER(UI_TOP_CENTRE)
+  rowBuffer(0) = UI_TOP_LEFT
+  rowBuffer(DIALOG_WIDTH - 1) = UI_TOP_RIGHT
+  DEFINE VRAM NAME_TAB_XY(DIALOG_X, DIALOG_Y), DIALOG_WIDTH, VARPTR rowBuffer(0)
+  rowBuffer(0) = UI_HORZ_LEFT
+  rowBuffer(DIALOG_WIDTH - 1) = UI_HORZ_RIGHT
+  DEFINE VRAM NAME_TAB_XY(DIALOG_X, DIALOG_Y + 2), DIALOG_WIDTH, VARPTR rowBuffer(0)
+  FILL_BUFFER(UI_BOTTOM_CENTRE)
+  rowBuffer(0) = UI_BOTTOM_LEFT
+  rowBuffer(DIALOG_WIDTH - 1) = UI_BOTTOM_RIGHT
+  DEFINE VRAM NAME_TAB_XY(DIALOG_X, DIALOG_Y + 8), DIALOG_WIDTH, VARPTR rowBuffer(0)
+  PRINT AT XY(DIALOG_X + 4, DIALOG_Y + 1), "LEVEL ", currentLevel
+  IF remainingPipes = 0 THEN
+    PRINT AT XY(DIALOG_X + 3, DIALOG_Y + 3), "COMPLETED"
+  ELSE
+    PRINT AT XY(DIALOG_X + 3, DIALOG_Y + 3), "GAME OVER"
+  END IF
+  PRINT AT XY(DIALOG_X + 1, DIALOG_Y + 5), "SCORE:  ", <5>#score
+  PRINT AT XY(DIALOG_X + 1, DIALOG_Y + 7), "BEST:   ", <5>#hiscore
   END
 
+nextLevelTick: PROCEDURE
+  
+  END
 
 levelEnd: PROCEDURE
   gameState = GAME_STATE_ENDED
@@ -774,18 +829,18 @@ scoreTick: PROCEDURE
 ' ------------------------------------------
 
 updateHiScore: PROCEDURE
-  ' print score to off-screen buffer (could be faster to just process manually)
   PRINT AT #SCORE_VRAM_ADDR, <5>#hiscore
   PRINT AT XY(20,1), " BEST: "
-  GOTO doUpdateScore
+  GOSUB doUpdateScore
+  END
 
 updateScore: PROCEDURE
-
-  ' print score to off-screen buffer (could be faster to just process manually)
   PRINT AT #SCORE_VRAM_ADDR, <5>#score
   PRINT AT XY(20,1), "SCORE:"
+  GOSUB doUpdateScore
+  END
 
-doUpdateScore:
+doUpdateScore: PROCEDURE
   ' copy from vram to ram
   DEFINE VRAM READ #SCORE_VRAM_ADDR, SCORE_LEN, VARPTR scoreDesiredOffset(0)
 
@@ -1308,6 +1363,7 @@ include "logo.pletter.bas"
 include "sprites.pletter.bas"
 include "tiles.pletter.bas"
 include "loading.pletter.bas"
+include "ui.pletter.bas"
 include "patterns.bas"
 include "lookups.bas"
 
