@@ -23,7 +23,7 @@ titleScreen: PROCEDURE
 
     ' set the background colors of the title text first two rows
     #addr = #VDP_COLOR_TAB1 + (136 * 8)
-    FOR I = 0 TO 23
+    FOR I = 0 TO NAME_TABLE_HEIGHT - 1
         DEFINE VRAM #addr, 16, titleLogoRow0Color
         #addr = #addr + 32
     NEXT I
@@ -92,14 +92,12 @@ titleScreen: PROCEDURE
 
 	WHILE 1
     WAIT
-    IF (FRAME AND $7) = 0 THEN
-      IF (FRAME AND $8) OR triggered THEN
-        PRINT AT XY(8, 19), ">"
-        PRINT AT XY(23, 19), "<"
-      ELSE
-        PRINT AT XY(8, 19), " "
-        PRINT AT XY(23, 19), " "
-      END IF
+    IF (FRAME AND 8) OR triggered THEN
+      VPOKE NAME_TAB_XY(8, 19), ">"
+      VPOKE NAME_TAB_XY(23, 19), "<"
+    ELSE
+      VPOKE NAME_TAB_XY(8, 19), " "
+      VPOKE NAME_TAB_XY(23, 19), " "
     END IF
     GOSUB titleLogoTick
     GOSUB updateNavInput

@@ -328,8 +328,7 @@ main:
   DEFINE CHAR PLETTER 0, 24, logoTopPletter
   DEFINE VRAM NAME_TAB1_XY(0, 22), 12, logoNamesTop
   DEFINE VRAM NAME_TAB1_XY(0, 23), 12, logoNamesBottom
-  DEFINE CHAR 30, 1, tilePiece
-  DEFINE CHAR 31, 1, tilePiece  ' remaining pipes
+  FOR I = 30 TO 31 :  DEFINE CHAR I, 1, tilePiece : NEXT I
   DEFINE COLOR 30, 1, tilePieceColorEmpty
   DEFINE COLOR 31, 1, tilePieceColor
 
@@ -671,7 +670,7 @@ endTick: PROCEDURE
   ELSEIF gameSeconds = 3 THEN
     GOSUB levelEndDialog
     gameSeconds = 4
-  ELSEIF gameSeconds = 10 THEN
+  ELSEIF gameSeconds >= 5 AND g_nav <> 0 THEN
     IF remainingPipes = 0 THEN
       currentLevel = currentLevel + 1
     ELSE
@@ -686,15 +685,15 @@ endTick: PROCEDURE
   END IF
   END
 
-CONST DIALOG_WIDTH = 15
+CONST DIALOG_WIDTH = 17
 CONST DIALOG_X = 10
-CONST DIALOG_Y = 7
+CONST DIALOG_Y = 8
 levelEndDialog: PROCEDURE
-  SPRITE SPILL_SPRITE_ID, 0, -30, 4, VDP_TRANSPARENT
+  SPRITE SPILL_SPRITE_ID, -30, 0, 4, VDP_TRANSPARENT
   FILL_BUFFER(UI_MIDDLE_CENTRE)
   rowBuffer(0) = UI_MIDDLE_LEFT
   rowBuffer(DIALOG_WIDTH - 1) = UI_MIDDLE_RIGHT
-  FOR I = DIALOG_Y + 1 TO DIALOG_Y + 7
+  FOR I = DIALOG_Y + 1 TO DIALOG_Y + 9
     DEFINE VRAM NAME_TAB_XY(DIALOG_X, I), DIALOG_WIDTH, VARPTR rowBuffer(0)
   NEXT I
   FILL_BUFFER(UI_TOP_CENTRE)
@@ -707,15 +706,15 @@ levelEndDialog: PROCEDURE
   FILL_BUFFER(UI_BOTTOM_CENTRE)
   rowBuffer(0) = UI_BOTTOM_LEFT
   rowBuffer(DIALOG_WIDTH - 1) = UI_BOTTOM_RIGHT
-  DEFINE VRAM NAME_TAB_XY(DIALOG_X, DIALOG_Y + 8), DIALOG_WIDTH, VARPTR rowBuffer(0)
-  PRINT AT XY(DIALOG_X + 4, DIALOG_Y + 1), "LEVEL ", currentLevel
+  DEFINE VRAM NAME_TAB_XY(DIALOG_X, DIALOG_Y + 10), DIALOG_WIDTH, VARPTR rowBuffer(0)
   IF remainingPipes = 0 THEN
-    PRINT AT XY(DIALOG_X + 3, DIALOG_Y + 3), "COMPLETED"
+    PRINT AT XY(DIALOG_X + 4, DIALOG_Y + 1), "COMPLETED"
   ELSE
-    PRINT AT XY(DIALOG_X + 3, DIALOG_Y + 3), "GAME OVER"
+    PRINT AT XY(DIALOG_X + 4, DIALOG_Y + 1), "GAME OVER"
   END IF
-  PRINT AT XY(DIALOG_X + 1, DIALOG_Y + 5), "SCORE:  ", <5>#score
-  PRINT AT XY(DIALOG_X + 1, DIALOG_Y + 7), "BEST:   ", <5>#hiscore
+  PRINT AT XY(DIALOG_X + 5, DIALOG_Y + 4), "LEVEL ", currentLevel
+  PRINT AT XY(DIALOG_X + 2, DIALOG_Y + 6), "SCORE:  ", <5>#score
+  PRINT AT XY(DIALOG_X + 2, DIALOG_Y + 8), "BEST:   ", <5>#hiscore
   END
 
 nextLevelTick: PROCEDURE
