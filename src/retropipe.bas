@@ -213,9 +213,9 @@ mulThree:  ' I * 3 (up to I = 31)
   DATA BYTE 48, 51, 54, 57, 60, 63, 66, 69
   DATA BYTE 72, 75, 78, 81, 84, 87, 90, 93
 
-DEF FN TIMES_NINE(X) = ((X) * 8) + (X)  ' instead of X * 9
+DEF FN TIMES_NINE(X) = (((X) * 8) + (X))  ' instead of X * 9
 
-' branchless ternary operator which returns 0 in the other case
+' "branchless" ternary operator which returns 0 in the other case
 DEF FN IIF(E, V)  = (((E) <> 0) AND (V))  ' equivalent to: E ? V : 0
 DEF FN IIFN(E, V) = (((E) = 0) AND (V))   ' equivalent to: E ? 0 : V
 
@@ -526,9 +526,9 @@ pipeGame: PROCEDURE
   chute(CHUTE_SIZE) = CELL_CLEAR
 
   PRINT AT XY(20,0), "LEVEL: ", currentLevel
-
+  PRINT AT XY(26,1), " \24\25\26\27\28"
   IF #hiscore > 0 THEN  
-    PRINT AT XY(20,1), " BEST: ", <5>#hiscore
+    GOSUB updateHiScore
   ELSE
     GOSUB updateScore
   END IF
@@ -772,14 +772,22 @@ scoreTick: PROCEDURE
 
 ' Update the score data
 ' ------------------------------------------
+
+updateHiScore: PROCEDURE
+  ' print score to off-screen buffer (could be faster to just process manually)
+  PRINT AT #SCORE_VRAM_ADDR, <5>#hiscore
+  PRINT AT XY(20,1), " BEST: "
+  GOTO doUpdateScore
+
 updateScore: PROCEDURE
 
   ' print score to off-screen buffer (could be faster to just process manually)
   PRINT AT #SCORE_VRAM_ADDR, <5>#score
+  PRINT AT XY(20,1), "SCORE:"
 
+doUpdateScore:
   ' copy from vram to ram
   DEFINE VRAM READ #SCORE_VRAM_ADDR, SCORE_LEN, VARPTR scoreDesiredOffset(0)
-  PRINT AT XY(20,1), "SCORE: \24\25\26\27\28"
 
   ' offset to pattern index
   FOR I = 0 TO SCORE_LEN - 1
@@ -787,12 +795,13 @@ updateScore: PROCEDURE
   NEXT I
 
   ' update the remaining pipes tiles in the header
-  #addr = NAME_TAB_XY(31 - remainingPipes, 2)
+  #addr = NAME_TAB_XY(31 - remainingPipes, PLAYFIELD_Y - 1)
   IF remainingPipes THEN FILL_BUFFER(FILLED_TILE_ID)
   rowBuffer(0) = BORDER_TOP_PATT_ID
   DEFINE VRAM #addr, remainingPipes + 1, VARPTR rowBuffer(0)
 
   END
+
 
 
 ' ==========================================
@@ -836,72 +845,84 @@ flowTick: PROCEDURE
   IF animTile = 4 THEN  ' next tile?
   END IF
 
-  animSubStep = currentAnimStep AND $07
+  animSubStep = currentAnimStep AND 7
   currentAnimStep = currentAnimStep + 1
 
   currentSubTile = 0
   skipAnim = 0
-  IF animTile = 0 THEN
-    currentFlowDir = (currentAnim / 16) AND 7
-    IF currentFlowDir < 4 THEN
-      currentSubTile = subTileForFlow0(currentFlowDir)
-    ELSE
-      GOSUB levelEnd
-    END IF
-  ELSEIF animTile = 1 THEN
-    currentSubTile = SUBTILE_MC
-    IF currentAnim AND $80 THEN skipAnim = 1
-  ELSEIF animTile = 2 THEN
-    currentFlowDir = currentAnim AND 3
-    currentSubTile = subTileForFlow1(currentFlowDir)
 
-    lastAnimSprX = animSprX
-    lastAnimSprY = animSprY
-    lastFlowDir = currentFlowDir AND 3
+  SELECT CASE animTile
+    CASE 0  ' entry subtile
+      currentFlowDir = (currentAnim / 16) AND 7
+      IF currentFlowDir < 4 THEN
+        currentSubTile = subTileForFlow0(currentFlowDir)
+      ELSE
+        GOSUB levelEnd
+      END IF
+    CASE 1 ' middle subtile
+      currentSubTile = SUBTILE_MC
+      IF currentAnim AND $80 THEN skipAnim = 1
+    CASE 2 ' exit subtile
+      currentFlowDir = currentAnim AND 3
+      currentSubTile = subTileForFlow1(currentFlowDir)
 
-  ELSE
-    currentAnimStep = 0
-    animSubStep = 7  ' ensure flow sprite is hidden
-
-    prevTileX = currentTileX
-    prevTileY = currentTileY
-
-    currentIndex = currentIndex + offsetForFlow2(currentFlowDir)
-
-    currentTileX = modNine(currentIndex)
-    currentTileY = divNine(currentIndex)
-    IF prevTileX <> currentTileX AND prevTileY <> currentTileY THEN
-      tileId = 0
-    ELSE
-      animNameX = PLAYFIELD_X + mulThree(currentTileX)
-      animNameY = PLAYFIELD_Y + mulThree(currentTileY)
-      #currentIndexAddr = #VDP_NAME_TAB + XY(animNameX, animNameY)
-      tileId = game(currentIndex) AND CELL_TILE_MASK
-    END IF
-
-    IF tileId < 2 THEN
-      GOSUB levelEnd
-    ELSE
-      game(currentIndex) = tileId OR CELL_LOCKED_FLAG
-      #score = #score + POINTS_FLOW_TILE
-      IF (remainingPipes) THEN remainingPipes = remainingPipes - 1
-      GOSUB updateScore
-    END IF
-    currentAnim = anims(tileId * 4 + (currentAnim AND 3))
-    GOTO .startFlow
-  END IF
+      lastAnimSprX = animSprX
+      lastAnimSprY = animSprY
+      lastFlowDir = currentFlowDir AND 3
+    CASE ELSE ' next tile
+      GOSUB .flowNextTile
+      GOTO .startFlow
+  END SELECT
 
   currentIndexPattId = PATT_OFFSET(VPEEK(#currentIndexAddr + currentSubTile) - PIPES_PATT_ID)
 
-  IF skipAnim AND (currentSubTile = SUBTILE_MC) THEN
-    ' do nothing
-  ELSEIF currentSubTile = SUBTILE_MC AND ((currentAnim XOR (currentAnim / 16)) AND 3) THEN
-    GOSUB .flowSpriteCorner
-  ELSE
-    GOSUB .flowSpriteStraight
+  IF skipAnim = 0 THEN
+    IF currentSubTile = SUBTILE_MC AND ((currentAnim XOR (currentAnim / 16)) AND 3) THEN
+      GOSUB .flowSpriteCorner
+    ELSE
+      GOSUB .flowSpriteStraight
+    END IF
+
+    GOSUB .updateFlowSprite
   END IF
 
-  IF animSubStep = 7 AND skipAnim = 0 THEN
+  END
+
+' flow to the next tile
+.flowNextTile: PROCEDURE
+  currentAnimStep = 0
+  animSubStep = 7  ' ensure flow sprite is hidden
+
+  prevTileX = currentTileX
+  prevTileY = currentTileY
+
+  currentIndex = currentIndex + offsetForFlow2(currentFlowDir)
+
+  currentTileX = modNine(currentIndex)
+  currentTileY = divNine(currentIndex)
+  IF prevTileX <> currentTileX AND prevTileY <> currentTileY THEN
+    tileId = 0
+  ELSE
+    animNameX = PLAYFIELD_X + mulThree(currentTileX)
+    animNameY = PLAYFIELD_Y + mulThree(currentTileY)
+    #currentIndexAddr = #VDP_NAME_TAB + XY(animNameX, animNameY)
+    tileId = game(currentIndex) AND CELL_TILE_MASK
+  END IF
+
+  IF tileId < 2 THEN
+    GOSUB levelEnd
+  ELSE
+    game(currentIndex) = tileId OR CELL_LOCKED_FLAG
+    #score = #score + POINTS_FLOW_TILE
+    IF (remainingPipes) THEN remainingPipes = remainingPipes - 1
+    GOSUB updateScore
+  END IF
+  currentAnim = anims(tileId * 4 + (currentAnim AND 3))
+  END
+
+' update the flow sprite position and color
+.updateFlowSprite: PROCEDURE
+  IF animSubStep = 7 THEN
     IF currentAnimStep > 0 THEN
       I = VPEEK(#currentIndexAddr + currentSubTile)
       VPOKE #currentIndexAddr + currentSubTile, I + 10
@@ -921,9 +942,6 @@ flowTick: PROCEDURE
     DEFINE VRAM #VDP_SPRITE_PATT + FLOW_SPRITE_PATT_ID * 32, 8, VARPTR flowAnimBuffer(0)
     SPRITE FLOW_SPRITE_ID, animSprY - 1, animSprX, FLOW_SPRITE_PATT_ID * 4, FLOW_COLOR
   END IF
-
-  IF gameState = GAME_STATE_ENDED THEN GOSUB renderCursor
-
   END
 
 ' generate dynamic sprite pattern data for H/V liquid flow
