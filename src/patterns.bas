@@ -26,43 +26,29 @@ digits: ' uncompressed
 
 ' TILE COLORS
 
-fontColor:
-    DATA BYTE $f0, $f0, $f0, $f0, $f0, $f0, $f0, $00
+'fontColor:
+'defaultColor:
+'titleLogoColorWhiteGreen:
+'    DATA BYTE $f0, $f0, $f0, $f0, $f0, $f0, $f0, $f0
+'logoColorWhiteGreen:    
+'    DATA BYTE $f0, $f0, $f0, $f0, $f0, $f0, $f0, $f0
+  
+  'YELLOW
+'    DATA BYTE $b0, $a0, $a0, $a0, $a0, $a0, $a0, $a0
+'    DATA BYTE $a0, $a0, $a0, $a0, $a0, $a0, $a0, $a0
 
-'digitColor:
-'    DATA BYTE $31, $31, $31, $31, $31, $31, $31, $31
-
-baseColor:
-    DATA BYTE $45, $45, $45, $45, $45, $45, $45, $45
-
-pipeColor:
-    DATA BYTE $41, $41, $41, $41, $41, $41, $41, $41
-
-pipeColorGreen:
-    DATA BYTE $42, $42, $42, $42, $42, $42, $42, $42
-
-defaultColor:
-titleLogoColorWhiteGreen:
-    DATA BYTE $f0, $f0, $f0, $f0, $f0, $f0, $f0, $f0
-logoColorWhiteGreen:    
-    DATA BYTE $f0, $f0, $f0, $f0, $f0, $f0, $f0, $f0
-    DATA BYTE $30, $20, $c0, $c0, $c0, $c0, $c0, $c0
-    DATA BYTE $c0, $c0, $c0, $c0, $c0, $c0, $c0, $c0
-
-    DATA BYTE $74, $54, $24, $24, $24, $24, $54, $74
+' GREEN    
+'   DATA BYTE $30, $20, $c0, $c0, $c0, $c0, $c0, $c0
+'   DATA BYTE $c0, $c0, $c0, $c0, $c0, $c0, $c0, $c0
+' RED
+'   DATA BYTE $90, $80, $60, $60, $60, $60, $60, $60
+'   DATA BYTE $60, $60, $60, $60, $60, $60, $60, $60
 
 tilePiece:
-'    DATA BYTE $7F, $1C, $41, $7F, $7F, $41, $1C, $FF
-    DATA BYTE $FF, $3C, $81, $FF, $FF, $81, $3C, $FF
-'    DATA BYTE $1C, $41, $7F, $7F, $41, $1C, $00, $FF
-'    DATA BYTE $7F, $41, $7F, $7F, $41, $7F, $00, $FF
+    DATA BYTE $FF, $3C, $7e, $00, $00, $7e, $3C, $FF
+
 tilePieceColor:
-'    DATA BYTE $74, $54, $24, $24, $24, $24, $54, $f4
-    DATA BYTE $74, $54, $24, $24, $24, $24, $54, $f4
-'    DATA BYTE $54, $24, $24, $24, $24, $54, $74, $74
-'    DATA BYTE $74, $24, $24, $24, $24, $74, $74, $f4
-tilePieceColorEmpty:
-    DATA BYTE $74, $54, $14, $14, $14, $14, $54, $f4
+    DATA BYTE $74, $54, $41, $41, $41, $41, $54, $f4
 
 
 ' SPRITE PATTERNS
@@ -88,12 +74,6 @@ cornerFlowDownLeft:
     DATA BYTE $FE, $FE, $7E, $3E, $3E, $7C, $78, $00
 
 ' NAME TABLE MAPS
-
-logoNamesTop:
-    DATA BYTE $00, $01, $02, $03, $04, $05, $06, $07, $08, $00, $09, $0A
-logoNamesBottom:
-    DATA BYTE $0C, $0D, $0E, $0F, $10, $11, $12, $13, $14, $15, $16, $17
-
 chuteNames:  ' edges and such (178)
     DATA BYTE 179, 32, 32, 32, 178
 chuteBottomNames:

@@ -83,11 +83,13 @@ DEF FN NAME_TABLE1 = VDP(2) = 7
 
 ' used as a staging area for dynamic vram data (instead of a VPOKE in a loop or similar)
 DIM rowBuffer(NAME_TABLE_WIDTH)
-DEF FN FILL_BUFFER(C) = temp = C : GOSUB fillBuffer
+DEF FN FILL_BUFFER(val) = CH = val : GOSUB fillBuffer
+DEF FN COPY_BUFFER(cnt, adr) =  FOR J = 0 TO cnt - 1 : rowBuffer(J) = adr(J) : NEXT J
 
 fillBuffer: PROCEDURE
-  FOR J = 0 TO NAME_TABLE_WIDTH - 1 : rowBuffer(J) = temp : NEXT J
+  FOR J = 0 TO NAME_TABLE_WIDTH - 1 : rowBuffer(J) = CH : NEXT J
   END
+
 
 DIM vdpR1Flags
 

@@ -124,7 +124,7 @@ titleLogoTick: PROCEDURE
 
 	' update the color defs of three tiles
 	FOR I = 0 TO 5
-		DEFINE VRAM #addr, 16, VARPTR titleLogoColorWhiteGreen(titleSine(logoOffset - I))
+		DEFINE VRAM #addr, 16, VARPTR titleColorBuffer(titleSine(logoOffset - I))
         #addr = #addr + 32
 	NEXT I
 	END

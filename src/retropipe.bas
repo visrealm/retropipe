@@ -10,6 +10,21 @@
 ' https://github.com/visrealm/retropipe
 '
 
+' ==========================================
+' ENTRY POINT
+' ------------------------------------------
+GOTO main
+
+CONST FALSE = 0
+CONST TRUE  = -1
+
+' ==========================================
+' INCLUDES
+' ------------------------------------------
+include "vdp-utils.bas"
+include "input.bas"
+include "tiles.bas"
+
 CONST SHOW_TITLE = 1
 
 
@@ -126,6 +141,14 @@ CONST UI_HORZ_LEFT             = UI_DIALOG_PATT_ID + 9
 CONST UI_HORZ                  = UI_DIALOG_PATT_ID + 1  ' TC
 CONST UI_HORZ_RIGHT            = UI_DIALOG_PATT_ID + 10
 
+CONST COLOR_FLOW               = VDP_MED_GREEN'VDP_MAGENTA
+CONST COLOR_EDGE               = VDP_DK_BLUE
+CONST COLOR_TILE_BASE          = VDP_LT_BLUE
+CONST COLOR_EMPTY              = VDP_BLACK
+
+CONST COLOR_PIPE_FILLED        = ((COLOR_EDGE * 16) + COLOR_FLOW)
+CONST COLOR_PIPE_EMPTY         = ((COLOR_EDGE * 16) + COLOR_EMPTY)
+CONST COLOR_TILE               = ((COLOR_EDGE * 16) + COLOR_TILE_BASE)
 
 CONST LOADING_STRING_COUNT     = 10
 CONST LOADING_STRING_LEN       = 20
@@ -136,9 +159,6 @@ CONST POINTS_BUILD             = 100
 CONST POINTS_REPLACE_DEDUCT    = 50
 CONST POINTS_FLOW_TILE         = 100
 CONST #POINTS_LEVEL_COMPLETE   = 1000
-
-CONST FALSE = 0
-CONST TRUE  = -1
 
 ' ==========================================
 ' GLOBALS ( I guess everything is global :D )
@@ -176,6 +196,8 @@ DIM flowAnimTemp
 DIM flowAnimBuffer(16)
 DIM silentFrame
 
+DIM titleColorBuffer(32)
+
 DIM scoreCurrentOffset(5)
 DIM scoreDesiredOffset(5)
 
@@ -186,19 +208,6 @@ DIM spillSpriteId
 
 CONST SLIDE_MODE = 0
 DIM programBlockId(4)
-
-
-' ==========================================
-' ENTRY POINT
-' ------------------------------------------
-GOTO main
-
-' ==========================================
-' INCLUDES
-' ------------------------------------------
-include "vdp-utils.bas"
-include "input.bas"
-include "tiles.bas"
 
 
 ' since we have a non-ideal (not pow2) playfield area size
@@ -236,8 +245,6 @@ DEF FN IIFN(E, V) = (((E) = 0) AND (V))   ' equivalent to: E ? 0 : V
 
 
 CONST #SCORE_VRAM_ADDR    = #VDP_FREE_START
-
-CONST FLOW_COLOR = VDP_MED_GREEN
 
 DIM #progressCount
 DIM #progressBarAddr
@@ -306,7 +313,7 @@ main:
 
   FILL_BUFFER(" ")
   #addr = #VDP_NAME_TAB1
-  FOR I = 0 TO 23
+  FOR I = 0 TO NAME_TABLE_HEIGHT - 1
     DEFINE VRAM #addr, NAME_TABLE_WIDTH, VARPTR rowBuffer(0)
     #addr = #addr + NAME_TABLE_WIDTH
   NEXT I
@@ -320,17 +327,21 @@ main:
 
   DEFINE CHAR PLETTER 64, 32, font1Pletter
   DEFINE CHAR PLETTER 32, 32, font0Pletter
-  
-  FOR I = 32 TO 127
-    DEFINE COLOR I, 1, fontColor
+
+  FOR I = 0 TO 15 : titleColorBuffer(I) = $f0 : NEXT I
+  FOR I = 16 TO 31 : titleColorBuffer(I) = COLOR_FLOW * 16 : NEXT I
+
+  FOR I = 32 TO 126
+    DEFINE COLOR I, 1, VARPTR titleColorBuffer(0)
   NEXT I
 
   DEFINE CHAR PLETTER 0, 24, logoTopPletter
-  DEFINE VRAM NAME_TAB1_XY(0, 22), 12, logoNamesTop
-  DEFINE VRAM NAME_TAB1_XY(0, 23), 12, logoNamesBottom
-  FOR I = 30 TO 31 :  DEFINE CHAR I, 1, tilePiece : NEXT I
-  DEFINE COLOR 30, 1, tilePieceColorEmpty
-  DEFINE COLOR 31, 1, tilePieceColor
+  #addr = NAME_TAB1_XY(0, 22): GOSUB outputLogo
+  FOR I = EMPTY_TILE_ID TO FILLED_TILE_ID :  DEFINE CHAR I, 1, tilePiece : NEXT I
+  COPY_BUFFER(8, tilePieceColor)
+  DEFINE COLOR EMPTY_TILE_ID, 1, VARPTR rowBuffer(0)
+  FOR J = 2 TO 5 : rowBuffer(J) = COLOR_PIPE_FILLED : NEXT J
+  DEFINE COLOR FILLED_TILE_ID, 1, VARPTR rowBuffer(0)
 
 #if SHOW_TITLE
   GOSUB titleScreen
@@ -343,13 +354,12 @@ main:
 
 #if SHOW_TITLE
   FOR I = 32 TO 254
-    DEFINE COLOR I, 1, defaultColor
+    DEFINE COLOR I, 1, VARPTR titleColorBuffer(0)
   NEXT I
   GOSUB progressTick
   FOR I = 128 TO 254
-    DEFINE COLOR I, 1, defaultColor
+    DEFINE COLOR I, 1, VARPTR titleColorBuffer(0)
   NEXT I
-  DEFINE COLOR 31, 1, tilePieceColor
 
   GOSUB progressTick
   DEFINE CHAR PLETTER 64, 32, font1Pletter
@@ -368,8 +378,9 @@ main:
   DEFINE COLOR PLETTER 128, 18, gridColorPletter : GOSUB progressTick
 
   ' tile patterns and colors
-  FOR I = TILES_FILLED_PATT_ID TO TILES_FILLED_PATT_ID + 38
-      DEFINE COLOR I, 1, baseColor
+  FILL_BUFFER(COLOR_TILE)
+  FOR I = TILES_FILLED_PATT_ID TO TILES_FILLED_PATT_ID + 38 STEP 2
+      DEFINE COLOR I, 2, VARPTR rowBuffer(0)
   NEXT I
 
   GOSUB progressTick
@@ -380,11 +391,13 @@ main:
   DEFINE CHAR PLETTER PIPES_FILLED_PATT_ID, PIPES_PATT_COUNT, pipesPletter  ' full pipes
   GOSUB progressTick
 
-  FOR I = PIPES_PATT_ID TO PIPES_PATT_ID + PIPES_PATT_COUNT - 1
-      DEFINE COLOR I, 1, pipeColor
+  FILL_BUFFER(COLOR_PIPE_EMPTY)
+  FOR I = PIPES_PATT_ID TO PIPES_PATT_ID + PIPES_PATT_COUNT - 1 STEP 2
+      DEFINE COLOR I, 2, VARPTR rowBuffer(0)
   NEXT I
-  FOR I = PIPES_FILLED_PATT_ID TO PIPES_FILLED_PATT_ID + PIPES_PATT_COUNT - 1
-      DEFINE COLOR I, 1, pipeColorGreen
+  FILL_BUFFER(COLOR_PIPE_FILLED)
+  FOR I = PIPES_FILLED_PATT_ID TO PIPES_FILLED_PATT_ID + PIPES_PATT_COUNT - 1 STEP 2
+      DEFINE COLOR I, 2, VARPTR rowBuffer(0)
   NEXT I
   GOSUB progressTick
 
@@ -408,8 +421,7 @@ main:
 
   ' set up the name table
   ' ------------------------------
-  DEFINE VRAM NAME_TAB_XY(0, 0), LOGO_WIDTH, logoNamesTop
-  DEFINE VRAM NAME_TAB_XY(0, 1), LOGO_WIDTH, logoNamesBottom
+  #addr = #VDP_NAME_TAB : GOSUB outputLogo
 
   GOSUB progressTick
 
@@ -450,6 +462,7 @@ main:
   WHILE 1
     GOSUB pipeGame
   WEND
+
 
 CONST #PROGDATA_ADDR         = $1F00
 CONST PROGDATA_HEADER_BYTES  = 4 + 16 + 16
@@ -500,6 +513,13 @@ writeProgramData: PROCEDURE
       R = R + 1
   LOOP WHILE (FWST AND $80)
   VDP_ENABLE_INT
+  END
+
+
+outputLogo: PROCEDURE
+  FOR I = 0 TO LOGO_WIDTH - 1: rowBuffer(I) = I * 2 : rowBuffer(I + 12) = I * 2 + 1 : NEXT I
+  DEFINE VRAM #addr, LOGO_WIDTH, VARPTR rowBuffer(0)
+  DEFINE VRAM #addr + 32, LOGO_WIDTH, VARPTR rowBuffer(LOGO_WIDTH)
   END
 
 
@@ -640,15 +660,18 @@ pipeGame: PROCEDURE
     END IF
   WEND
 
-  ' copy screen to name table 1
+  GOSUB backupNameTable
+  NAME_TABLE1
+  END
+
+' copy screen to name table 1
+backupNametable: PROCEDURE
   #addr = 0
-  FOR I = 0 TO 23
+  FOR I = 0 TO NAME_TABLE_HEIGHT - 1
     DEFINE VRAM READ #VDP_NAME_TAB + #addr, NAME_TABLE_WIDTH, VARPTR rowBuffer(0)
     DEFINE VRAM #VDP_NAME_TAB1 + #addr, NAME_TABLE_WIDTH, VARPTR rowBuffer(0)
     #addr = #addr + NAME_TABLE_WIDTH
   NEXT I
-  
-  NAME_TABLE1
   END
 
 buildTick: PROCEDURE
@@ -671,6 +694,7 @@ endTick: PROCEDURE
     GOSUB levelEndDialog
     gameSeconds = 4
   ELSEIF gameSeconds >= 5 AND g_nav <> 0 THEN
+    gameSeconds = 5
     IF remainingPipes = 0 THEN
       currentLevel = currentLevel + 1
     ELSE
@@ -739,7 +763,7 @@ replaceTick: PROCEDURE
     xOff = 0
     yOff = 0
   END IF
-  IF gameState <> GAME_STATE_ENDED THEN
+  IF gameState < GAME_STATE_ENDED THEN
 
     IF ticks >= 24 THEN
       IF (ticks AND 3) = 0 THEN
@@ -775,7 +799,7 @@ spillTick: PROCEDURE
 
   spillSpriteId = spillSpriteId + 1
 
-  SPRITE SPILL_SPRITE_ID, lastAnimSprY - .offsetY(lastFlowDir), lastAnimSprX - .offsetX(lastFlowDir), spillSpriteId * 4, FLOW_COLOR
+  SPRITE SPILL_SPRITE_ID, lastAnimSprY - .offsetY(lastFlowDir), lastAnimSprX - .offsetX(lastFlowDir), spillSpriteId * 4, COLOR_FLOW
   END
 
 .offsetX:
@@ -862,22 +886,18 @@ doUpdateScore: PROCEDURE
 ' Handle title/logo animation
 ' ------------------------------------------
 logoTick: PROCEDURE
-  CONST LOGO_ANIM_TILE_ID         = LOGO_PATT_ID + LOGO_WIDTH
   CONST LOGO_ANIM_TILES_PER_FRAME = 3
-  CONST LOGO_ANIM_SINE_OFFSET     = 23
-
-  ' only move the wave every 4 frames
-  logoOffset = gameFrame / 4
+  CONST LOGO_ANIM_SINE_OFFSET     = 23 - (LOGO_PATT_ID + LOGO_WIDTH)
 
   ' every frame however, we render a quarter of the new wave
-  logoStart = mulThree((gameFrame AND 3)) + LOGO_ANIM_TILE_ID
-  logoOffset = (logoOffset AND $f) + LOGO_ANIM_SINE_OFFSET - logoStart
+  logoStart = mulThree((gameFrame AND 3))
+  logoOffset = ((gameFrame / 4) AND $f) + LOGO_ANIM_SINE_OFFSET - logoStart
 
   ' update the color defs of three tiles
-  #addr = #baseAddr + PATT_OFFSET(logoStart)
+  #addr = #baseAddr + PATT_OFFSET(logoStart * 2 + 1)
   FOR I = 0 TO LOGO_ANIM_TILES_PER_FRAME - 1
-    DEFINE VRAM #addr, TILE_SIZE, VARPTR logoColorWhiteGreen(sine(logoOffset - I))
-    #addr = #addr + TILE_SIZE
+    DEFINE VRAM #addr, TILE_SIZE, VARPTR titleColorBuffer(8 + sine(logoOffset - I))
+    #addr = #addr + TILE_SIZE * 2
   NEXT I
   END
 
@@ -994,7 +1014,7 @@ flowTick: PROCEDURE
     animSprY = TILES_PX(animNameY + (currentSubTile / NAME_TABLE_WIDTH))
 
     DEFINE VRAM #VDP_SPRITE_PATT + FLOW_SPRITE_PATT_ID * 32, 8, VARPTR flowAnimBuffer(0)
-    SPRITE FLOW_SPRITE_ID, animSprY - 1, animSprX, FLOW_SPRITE_PATT_ID * 4, FLOW_COLOR
+    SPRITE FLOW_SPRITE_ID, animSprY - 1, animSprX, FLOW_SPRITE_PATT_ID * 4, COLOR_FLOW
   END IF
   END
 
@@ -1118,7 +1138,7 @@ uiTick: PROCEDURE
   ' handle user input
   delayFrames = nextDelayFrames
   nextDelayFrames = 4
-  IF hoverFfwd AND gameState <> GAME_STATE_ENDED THEN
+  IF hoverFfwd AND gameState < GAME_STATE_ENDED THEN
     IF NAV(NAV_RIGHT) THEN
       hoverFfwd = FALSE
       GOSUB renderFfwdButton
@@ -1131,7 +1151,7 @@ uiTick: PROCEDURE
       hoverFfwd = FALSE
       GOSUB renderFfwdButton
     END IF
-  ELSEIF NAV(NAV_OK) AND gameState <> GAME_STATE_ENDED THEN
+  ELSEIF NAV(NAV_OK) AND gameState < GAME_STATE_ENDED THEN
     IF SLIDE_MODE THEN
       GOSUB slideTile      
     ELSE
@@ -1168,7 +1188,7 @@ uiTick: PROCEDURE
   END IF
 
   ' render the tile chute if it's not settled
-  IF gameState <> GAME_STATE_ENDED AND chuteOffset <> 0 THEN
+  IF gameState < GAME_STATE_ENDED AND chuteOffset <> 0 THEN
     chuteOffset = chuteOffset - 1
     GOSUB renderChute
   END IF
