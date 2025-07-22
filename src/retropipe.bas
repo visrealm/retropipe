@@ -24,8 +24,11 @@ CONST TRUE  = -1
 include "vdp-utils.bas"
 include "input.bas"
 include "tiles.bas"
+include "sfx.bas"
 
+#if NOT CREATIVISION
 CONST SHOW_TITLE = 1
+#endif
 
 
 ' ==========================================
@@ -194,7 +197,7 @@ DIM #lastTileNameIndex
 
 DIM flowAnimTemp
 DIM flowAnimBuffer(16)
-DIM silentFrame
+'DIM silentFrame
 
 DIM titleColorBuffer(32)
 
@@ -208,7 +211,6 @@ DIM spillSpriteId
 
 CONST SLIDE_MODE = 0
 DIM programBlockId(4)
-
 
 ' since we have a non-ideal (not pow2) playfield area size
 ' added lookup tables for various operations on it
@@ -644,8 +646,6 @@ pipeGame: PROCEDURE
   WHILE gameState <> GAME_STATE_NEXT_LEVEL
     WAIT
 
-    if gameFrame = silentFrame THEN SOUND 3,,0
-
     ON gameState FAST GOSUB buildTick, flowTick, endTick
 
     GOSUB uiTick
@@ -983,7 +983,7 @@ flowTick: PROCEDURE
     tileId = game(currentIndex) AND CELL_TILE_MASK
   END IF
 
-  IF tileId < 2 THEN
+  IF tileId < 2 OR (isReplacing AND (g_cell = currentIndex))THEN
     GOSUB levelEnd
   ELSE
     game(currentIndex) = tileId OR CELL_LOCKED_FLAG
@@ -1252,8 +1252,7 @@ placeTile: PROCEDURE
   chuteOffset = 4
   GOSUB updateScore
 
-  SOUND 3, 6, 5
-  silentFrame = gameFrame + 3
+  PLAY_SFX(#sfxPlace)
 
   END
 
