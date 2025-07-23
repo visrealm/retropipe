@@ -751,6 +751,8 @@ levelEnd: PROCEDURE
   IF remainingPipes = 0 THEN
     #score = #score + #POINTS_LEVEL_COMPLETE
     GOSUB updateScore
+  ELSE
+    PLAY_SFX(#sfxSpill)
   END IF
   END
 
@@ -983,9 +985,10 @@ flowTick: PROCEDURE
     tileId = game(currentIndex) AND CELL_TILE_MASK
   END IF
 
-  IF tileId < 2 OR (isReplacing AND (g_cell = currentIndex))THEN
+  IF tileId < 2 OR (isReplacing AND (g_cell = currentIndex)) THEN
     GOSUB levelEnd
   ELSE
+    PLAY_SFX(#sfxWin)
     game(currentIndex) = tileId OR CELL_LOCKED_FLAG
     #score = #score + POINTS_FLOW_TILE
     IF (remainingPipes) THEN remainingPipes = remainingPipes - 1
@@ -1006,6 +1009,8 @@ flowTick: PROCEDURE
     FOR I = 0 TO 7
       flowAnimBuffer(I) = 0
     NEXT I
+
+    PLAY_SFX(#sfxGlug)
 
     DEFINE VRAM #VDP_SPRITE_PATT + FLOW_SPRITE_PATT_ID * 32, 8, VARPTR flowAnimBuffer(0)
     SPRITE FLOW_SPRITE_ID, animSprY - 1, animSprX, FLOW_SPRITE_PATT_ID * 4, VDP_TRANSPARENT
@@ -1191,6 +1196,7 @@ uiTick: PROCEDURE
   IF gameState < GAME_STATE_ENDED AND chuteOffset <> 0 THEN
     chuteOffset = chuteOffset - 1
     GOSUB renderChute
+    IF chuteOffset = 0 THEN PLAY_SFX(#sfxFall)
   END IF
 
   ' place and color the cursor
@@ -1226,6 +1232,8 @@ placeTile: PROCEDURE
 
     isReplacing = TRUE
     replaceFrame = gameFrame
+
+    PLAY_SFX(#sfxBreak)
 
     g_type = chute(0)
     g_cell = cursorIndex
