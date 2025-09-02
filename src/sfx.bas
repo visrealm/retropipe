@@ -1,3 +1,20 @@
+'
+' Project: retropipe
+'
+' Sound effects
+'
+' Copyright (c) 2025 Troy Schrapel
+'
+' This code is licensed under the MIT license
+'
+' https://github.com/visrealm/retropipe
+'
+
+DEF FN TONE_VOL(F, V) = (F * 16 + V)
+DEF FN NOISE_VOL(N, V) = (N * 16 + V)
+
+
+
 ' SOUND EFFECTS
 #sfx:
 DATA 0  ' easiest way to have offset of 0 mean stop
@@ -82,7 +99,7 @@ audioTick: PROCEDURE
   #info "SN76489"
   SOUND 0, #ch2, ch2Vol
   SOUND 3, ch3, ch3Vol
-#else'if PSG_AY38910
+#else
   #info "AY-3-8910"
   SOUND 5, #ch2, ch2Vol
   SOUND 7, 0,   ch3Vol

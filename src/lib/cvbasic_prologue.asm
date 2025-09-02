@@ -779,8 +779,38 @@ define_sprite:
     endif
 	
 update_sprite:
-    if SMS
 	pop bc		; Pop return address.
+
+if CVBASIC_DIRECT_SPRITES
+	; Direct sprite mode - write immediately to VDP
+	ld (sprite_data+3),a	; 4th argument (frame/color) already in A
+	pop af
+	ld (sprite_data+2),a	; 3rd argument (pattern)
+	pop af  
+	ld (sprite_data+1),a	; 2nd argument (X coordinate)
+	pop af
+	ld (sprite_data),a	; 1st argument (Y coordinate)
+	pop af			; Sprite number
+	push bc		; Push return address.
+	
+	; Calculate VDP address: $1B00 + (sprite number * 4)
+	add a,a		; * 2
+	add a,a		; * 4
+	ld e,a
+	ld d,0
+	ld hl,$1B00
+	add hl,de
+	ex de,hl
+	
+	; Copy sprite data directly to VDP
+	ld hl,sprite_data
+	ld bc,4
+	call nmi_off
+	call LDIRVM
+	call nmi_on
+
+else
+if SMS
 	pop de		; 3th. argument in D (Y-coordinate)
 	ld e,a		; 4th. argument in E (frame)
 	pop af		; 2nd. argument in A (X-coordinate)
@@ -796,8 +826,7 @@ update_sprite:
 	ld (hl),d
 	inc l
 	ld (hl),e
-    else
-	pop bc
+else    
 	ld (sprite_data+3),a
 	pop af
 	ld (sprite_data+2),a
@@ -811,14 +840,15 @@ update_sprite:
 	ld de,sprites
 	add a,a
 	add a,a
-    if SORD
+ if SORD
 	or $80
-    endif
+ endif
 	ld e,a
 	ld hl,sprite_data
 	ld bc,4
 	ldir
-    endif
+endif
+endif
 	ret
 
 	; Fast 16-bit multiplication.
@@ -1463,9 +1493,12 @@ nmi_handler:
 	ld (vdp_status),a
     endif
 
-	;
+  ;
 	; Update of sprite attribute table
 	;
+if CVBASIC_DIRECT_SPRITES
+else
+
     if SMS
 	bit 2,(hl)
 	jr z,.4
@@ -1606,6 +1639,7 @@ nmi_handler:
 	jp nz,.6
 .5:
     endif
+endif ; CVBASIC_DIRECT_SPRITES
 
     if COLECO
 	out (JOYSEL),a
@@ -2604,7 +2638,13 @@ nmi_handler:
 	ld ($fffe),a
     endif
     if MSX
+      if KONAMI
+	ld ($8000),a
+	inc a
+	ld ($a000),a
+      else
 	ld ($7000),a
+      endif
     endif
   endif
 	pop de
@@ -2909,7 +2949,13 @@ music_generate:
         ld ($fffe),a
     endif
     if MSX
+      if KONAMI
+	ld ($8000),a
+	inc a
+	ld ($a000),a
+      else
 	ld ($7000),a
+      endif
     endif
   endif
         ld b,(hl)
@@ -3814,8 +3860,17 @@ Z80_CTC:	equ $28
         ld ($fffe),a
     endif
     if MSX
+      if KONAMI
+        ld a,1	
+        ld ($6000),a
+        inc a
+        ld ($8000),a
+        inc a	
+        ld ($a000),a
+      else
         ld a,1		; ASCII 16K
         ld ($7000),a
+      endif
     endif
   endif
     if MEMOTECH+EINSTEIN+NABU

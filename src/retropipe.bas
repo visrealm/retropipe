@@ -34,6 +34,9 @@ CONST SHOW_TITLE = 1
 ' ==========================================
 ' CONSTANTS
 ' ------------------------------------------
+CONST CVBASIC_DIRECT_SPRITES = 1
+
+
 CONST PLAYFIELD_X = 5
 CONST PLAYFIELD_Y = 3
 CONST PLAYFIELD_WIDTH = 9
@@ -645,8 +648,9 @@ pipeGame: PROCEDURE
   ' main game loop
   WHILE gameState <> GAME_STATE_NEXT_LEVEL
     WAIT
-
+    VDP_REG(7)=$f1
     ON gameState FAST GOSUB buildTick, flowTick, endTick
+    VDP_REG(7)=$f4
 
     GOSUB uiTick
     GOSUB logoTick

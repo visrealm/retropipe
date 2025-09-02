@@ -40,7 +40,7 @@
 ;: warn-symbols = off
 
 ; use original (possibly incorrectly ported) random
-OLD_RND equ 1
+OLD_RND equ 0
 
 ; We have to use our own workspace, not GPLWS, because the interrupt routine makes it unsafe to
 ; use r11, which we kind of need! So that eats 32 bytes of RAM but means most of the register
@@ -440,7 +440,6 @@ print_char2
     b *r6
 print_char
     mov r11,r6
-	swpb r2
     b @print_char2
 
 ; Load sprite definitions: Sprite number in R4, CPU data in R0, count of sprites in R5 (MSB)
@@ -511,11 +510,26 @@ define_color
 update_sprite
     srl r4,8            ; make word
     sla r4,2            ; x4 for address
+    .ifeq CVBASIC_DIRECT_SPRITES
     ai r4,sprites       ; sprite mirror address
     movb r5,*r4+        ; move bytes
     movb r6,*r4+        ; move bytes
     movb r7,*r4+        ; move bytes
     movb r0,*r4+        ; move bytes
+    .else
+    limi 0
+    ai r4,>5b00         ; >1b00 with the write bit added, and byte flipped
+    swpb r4
+    movb r4,@VDPWADR   ; SAL address
+    swpb r4
+    movb r4,@VDPWADR   ; going to copy the sprite table to VDP
+    nop
+    movb r5,@VDPWDATA
+    movb r6,@VDPWDATA
+    movb r7,@VDPWDATA
+    movb r0,@VDPWDATA
+    limi 2
+    .endif
     b *r11
 
 ; SGN R0 - return 1, -1 or 0 as 16 bit
@@ -613,7 +627,7 @@ rmask
     data >b400          ; mask for 16 bit
     .endif    
 
-; Set SN Frequency: R0=freqency code, R2=channel command (MSB)
+; Set SN Frequency: R0=frequency code, R2=channel command (MSB)
 ; Original: A=least significant byte  X=channel command  Y=most significant byte
 sn76489_freq
     mov r0,r3
@@ -825,6 +839,7 @@ int_handler
     mov @>7ffe,@saved_bank  ; save bank switch page
     .endif
     
+    .ifeq CVBASIC_DIRECT_SPRITES
     li r11,>005b        ; >1b00 with the write bit added, and byte flipped
     movb r11,@VDPWADR   ; SAL address
     swpb r11
@@ -862,6 +877,7 @@ int_handler
     dec r12
     jne -!6
 !5
+    .endif  ; !CVBASIC_DIRECT_SPRITES
 
 ; next read the joysticks - output needs to be 21xxLDRU - 1 and 2 are button and button2 respectively
 ; We don't have a button 2. We also need to read the keyboard and fill in key1_data. key2_data we
