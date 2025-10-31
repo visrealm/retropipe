@@ -91,11 +91,11 @@ cvbasic_add_target(nabu nabu --nabu)
 cvbasic_add_target(sg1000 sc3000 --sg1000)
 cvbasic_add_target(creativision crv "--creativision;-rom16")
 
-# Special NABU MAME target (different defines and ROM name)
-cvbasic_add_target(nabu_mame nabu --nabu DEFINES "-DTMS9918_TESTING=1" ROM "000001.nabu")
+# Special NABU MAME target (different defines and ROM name, output to asm dir as intermediate)
+cvbasic_add_target(nabu_mame nabu --nabu DEFINES "-DTMS9918_TESTING=1" ROM "000001.nabu" OUTPUT_DIR "${ASM_DIR}")
 
-# NABU MAME packaging
-cvbasic_package_nabu_mame("000001.nabu" "retropipe_${VERSION}_nabu_mame.npz" "${ROMS_DIR}")
+# NABU MAME packaging (package from asm dir to roms dir)
+cvbasic_package_nabu_mame("000001.nabu" "retropipe_${VERSION}_nabu_mame.npz" "${ASM_DIR}" "${ROMS_DIR}")
 add_custom_target(nabu_mame_package DEPENDS "${ROMS_DIR}/retropipe_${VERSION}_nabu_mame.npz")
 
 # Master target to build all platforms

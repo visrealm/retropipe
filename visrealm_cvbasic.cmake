@@ -268,15 +268,15 @@ function(cvbasic_assemble_gasm80 ASM_FILE ROM_OUTPUT ASM_DIR ROMS_DIR TOOL_DEPS)
 endfunction()
 
 # Package NABU MAME file into .npz format
-# Takes a .nabu file named 000001.nabu and packages it into a .npz (zip) file
-function(cvbasic_package_nabu_mame NABU_FILE OUTPUT_NPZ ROMS_DIR)
+# Takes a .nabu file and packages it into a .npz (zip) file
+function(cvbasic_package_nabu_mame NABU_FILE OUTPUT_NPZ SOURCE_DIR OUTPUT_DIR)
     add_custom_command(
-        OUTPUT "${ROMS_DIR}/${OUTPUT_NPZ}"
-        COMMAND ${CMAKE_COMMAND} -E tar "cf" "${ROMS_DIR}/${OUTPUT_NPZ}.tmp.zip" --format=zip "${NABU_FILE}"
-        COMMAND ${CMAKE_COMMAND} -E copy "${ROMS_DIR}/${OUTPUT_NPZ}.tmp.zip" "${ROMS_DIR}/${OUTPUT_NPZ}"
-        COMMAND ${CMAKE_COMMAND} -E remove "${ROMS_DIR}/${OUTPUT_NPZ}.tmp.zip"
-        DEPENDS "${ROMS_DIR}/${NABU_FILE}"
-        WORKING_DIRECTORY "${ROMS_DIR}"
+        OUTPUT "${OUTPUT_DIR}/${OUTPUT_NPZ}"
+        COMMAND ${CMAKE_COMMAND} -E tar "cf" "${OUTPUT_DIR}/${OUTPUT_NPZ}.tmp.zip" --format=zip "${NABU_FILE}"
+        COMMAND ${CMAKE_COMMAND} -E copy "${OUTPUT_DIR}/${OUTPUT_NPZ}.tmp.zip" "${OUTPUT_DIR}/${OUTPUT_NPZ}"
+        COMMAND ${CMAKE_COMMAND} -E remove "${OUTPUT_DIR}/${OUTPUT_NPZ}.tmp.zip"
+        DEPENDS "${SOURCE_DIR}/${NABU_FILE}"
+        WORKING_DIRECTORY "${SOURCE_DIR}"
         COMMENT "Packaging NABU MAME: ${OUTPUT_NPZ}"
         VERBATIM
     )
@@ -322,15 +322,15 @@ endfunction()
 # Auto-generates ROM names, ASM names, and descriptions based on platform
 #
 # Usage:
-#   cvbasic_add_target(TARGET_NAME PLATFORM PLATFORM_FLAG [DEFINES defines] [ROM rom_output] [ASM asm_output] [DESCRIPTION desc])
+#   cvbasic_add_target(TARGET_NAME PLATFORM PLATFORM_FLAG [DEFINES defines] [ROM rom_output] [ASM asm_output] [DESCRIPTION desc] [OUTPUT_DIR dir])
 #
 # Examples:
 #   cvbasic_add_target(coleco cv "")
 #   cvbasic_add_target(ti99 ti994a --ti994a)
-#   cvbasic_add_target(nabu_mame nabu --nabu DEFINES "-DTMS9918_TESTING=1" ROM "000001.nabu")
+#   cvbasic_add_target(nabu_mame nabu --nabu DEFINES "-DTMS9918_TESTING=1" ROM "000001.nabu" OUTPUT_DIR "${ASM_DIR}")
 #
 function(cvbasic_add_target TARGET_NAME PLATFORM PLATFORM_FLAG)
-    cmake_parse_arguments(TGT "" "DEFINES;ROM;ASM;DESCRIPTION" "" ${ARGN})
+    cmake_parse_arguments(TGT "" "DEFINES;ROM;ASM;DESCRIPTION;OUTPUT_DIR" "" ${ARGN})
 
     # Extract project name from source file
     get_filename_component(PROJECT_NAME "${CVBASIC_PROJECT_SOURCE_FILE}" NAME_WE)
@@ -429,15 +429,22 @@ function(cvbasic_add_target TARGET_NAME PLATFORM PLATFORM_FLAG)
         VERBATIM
     )
 
+    # Determine output directory (use custom if specified, otherwise use roms dir)
+    if(TGT_OUTPUT_DIR)
+        set(ROM_OUTPUT_DIR "${TGT_OUTPUT_DIR}")
+    else()
+        set(ROM_OUTPUT_DIR "${CVBASIC_PROJECT_ROMS_DIR}")
+    endif()
+
     # Assembly step (platform specific)
     if(PLATFORM_FLAG STREQUAL "--ti994a")
-        cvbasic_assemble_ti99("${TGT_ASM}" "${TGT_ROM}" "${CVBASIC_PROJECT_CART_TITLE}" "${CVBASIC_PROJECT_ASM_DIR}" "${CVBASIC_PROJECT_ROMS_DIR}" "${CVBASIC_PROJECT_TOOL_DEPS}")
+        cvbasic_assemble_ti99("${TGT_ASM}" "${TGT_ROM}" "${CVBASIC_PROJECT_CART_TITLE}" "${CVBASIC_PROJECT_ASM_DIR}" "${ROM_OUTPUT_DIR}" "${CVBASIC_PROJECT_TOOL_DEPS}")
     else()
-        cvbasic_assemble_gasm80("${TGT_ASM}" "${TGT_ROM}" "${CVBASIC_PROJECT_ASM_DIR}" "${CVBASIC_PROJECT_ROMS_DIR}" "${CVBASIC_PROJECT_TOOL_DEPS}")
+        cvbasic_assemble_gasm80("${TGT_ASM}" "${TGT_ROM}" "${CVBASIC_PROJECT_ASM_DIR}" "${ROM_OUTPUT_DIR}" "${CVBASIC_PROJECT_TOOL_DEPS}")
     endif()
 
     # Add target
-    add_custom_target(${TARGET_NAME} DEPENDS "${CVBASIC_PROJECT_ROMS_DIR}/${TGT_ROM}")
+    add_custom_target(${TARGET_NAME} DEPENDS "${ROM_OUTPUT_DIR}/${TGT_ROM}")
 
     # Auto-add pletter compression dependency if configured
     if(CVBASIC_PROJECT_PLETTER_TARGET)
