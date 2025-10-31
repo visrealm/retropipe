@@ -69,35 +69,26 @@ cvbasic_setup_project(
     ROMS_DIR "${ROMS_DIR}"
     CART_TITLE "RETROPIPE"
     VERSION "${VERSION}"
+    PLETTER_TARGET pletter_compression
     DEPENDENCIES ${CVBASIC_SOURCE_FILES} ${PLETTER_OUTPUTS}
     TOOL_DEPS ${TOOL_DEPENDENCIES}
 )
 
-# Define all platform targets (much simpler now!)
-cvbasic_add_target(ti99 ti994a --ti994a DESCRIPTION "TI-99/4A")
-cvbasic_add_target(coleco cv "" ROM "retropipe_${VERSION}_cv.rom" DESCRIPTION "ColecoVision")
-cvbasic_add_target(msx_asc16 msx --msx ROM "retropipe_${VERSION}_msx_asc16.rom" DESCRIPTION "MSX ASCII16")
-cvbasic_add_target(msx_konami msx "--msx;-konami" ROM "retropipe_${VERSION}_msx_konami.rom" DESCRIPTION "MSX Konami")
-cvbasic_add_target(nabu nabu --nabu ROM "retropipe_${VERSION}.nabu" DESCRIPTION "NABU")
-cvbasic_add_target(sg1000 sc3000 --sg1000 ROM "retropipe_${VERSION}_sc3000.sg" DESCRIPTION "SG-1000/SC-3000")
-cvbasic_add_target(creativision crv "--creativision;-rom16" ROM "retropipe_${VERSION}_crv.bin" DESCRIPTION "CreatiVision")
+# Define all platform targets (ROM names and descriptions auto-generated!)
+cvbasic_add_target(ti99 ti994a --ti994a)
+cvbasic_add_target(coleco cv "")
+cvbasic_add_target(msx_asc16 msx --msx)
+cvbasic_add_target(msx_konami msx "--msx;-konami")
+cvbasic_add_target(nabu nabu --nabu)
+cvbasic_add_target(sg1000 sc3000 --sg1000)
+cvbasic_add_target(creativision crv "--creativision;-rom16")
 
 # Special NABU MAME target (different defines and ROM name)
-cvbasic_add_target(nabu_mame nabu --nabu DEFINES "-DTMS9918_TESTING=1" ROM "000001.nabu" DESCRIPTION "NABU MAME")
+cvbasic_add_target(nabu_mame nabu --nabu DEFINES "-DTMS9918_TESTING=1" ROM "000001.nabu")
 
 # NABU MAME packaging
 cvbasic_package_nabu_mame("000001.nabu" "retropipe_${VERSION}_nabu_mame.npz" "${ROMS_DIR}")
 add_custom_target(nabu_mame_package DEPENDS "${ROMS_DIR}/retropipe_${VERSION}_nabu_mame.npz")
-
-# Add pletter compression dependency to all targets
-add_dependencies(ti99 pletter_compression)
-add_dependencies(coleco pletter_compression)
-add_dependencies(msx_asc16 pletter_compression)
-add_dependencies(msx_konami pletter_compression)
-add_dependencies(nabu pletter_compression)
-add_dependencies(sg1000 pletter_compression)
-add_dependencies(creativision pletter_compression)
-add_dependencies(nabu_mame pletter_compression)
 
 # Master target to build all platforms
 add_custom_target(all_platforms DEPENDS ti99 coleco msx_asc16 msx_konami nabu sg1000 creativision nabu_mame_package)

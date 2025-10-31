@@ -254,11 +254,12 @@ endfunction()
 #   ROMS_DIR - Directory for final ROM files
 #   CART_TITLE - Cartridge title (for TI-99 only)
 #   VERSION - Version string for ROM filenames (optional)
+#   PLETTER_TARGET - Optional pletter compression target to auto-depend on
 #   DEPENDENCIES - List of source file dependencies
 #   TOOL_DEPS - List of tool dependencies (from setup_cvbasic_tools)
 #
 function(cvbasic_setup_project)
-    cmake_parse_arguments(PROJ "" "SOURCE_FILE;SOURCE_DIR;LIB_DIR;ASM_DIR;ROMS_DIR;CART_TITLE;VERSION" "DEPENDENCIES;TOOL_DEPS" ${ARGN})
+    cmake_parse_arguments(PROJ "" "SOURCE_FILE;SOURCE_DIR;LIB_DIR;ASM_DIR;ROMS_DIR;CART_TITLE;VERSION;PLETTER_TARGET" "DEPENDENCIES;TOOL_DEPS" ${ARGN})
 
     # Set defaults
     if(NOT PROJ_LIB_DIR)
@@ -273,46 +274,65 @@ function(cvbasic_setup_project)
     set(CVBASIC_PROJECT_ROMS_DIR "${PROJ_ROMS_DIR}" PARENT_SCOPE)
     set(CVBASIC_PROJECT_CART_TITLE "${PROJ_CART_TITLE}" PARENT_SCOPE)
     set(CVBASIC_PROJECT_VERSION "${PROJ_VERSION}" PARENT_SCOPE)
+    set(CVBASIC_PROJECT_PLETTER_TARGET "${PROJ_PLETTER_TARGET}" PARENT_SCOPE)
     set(CVBASIC_PROJECT_DEPENDENCIES "${PROJ_DEPENDENCIES}" PARENT_SCOPE)
     set(CVBASIC_PROJECT_TOOL_DEPS "${PROJ_TOOL_DEPS}" PARENT_SCOPE)
 endfunction()
 
 # Simplified CVBasic target builder
-# Auto-generates filenames and uses project configuration from cvbasic_setup_project
+# Auto-generates ROM names, ASM names, and descriptions based on platform
 #
 # Usage:
 #   cvbasic_add_target(TARGET_NAME PLATFORM PLATFORM_FLAG [DEFINES defines] [ROM rom_output] [ASM asm_output] [DESCRIPTION desc])
 #
 # Examples:
 #   cvbasic_add_target(coleco cv "")
-#   cvbasic_add_target(ti99 ti994a --ti994a DESCRIPTION "TI-99/4A")
+#   cvbasic_add_target(ti99 ti994a --ti994a)
 #   cvbasic_add_target(nabu_mame nabu --nabu DEFINES "-DTMS9918_TESTING=1" ROM "000001.nabu")
 #
 function(cvbasic_add_target TARGET_NAME PLATFORM PLATFORM_FLAG)
     cmake_parse_arguments(TGT "" "DEFINES;ROM;ASM;DESCRIPTION" "" ${ARGN})
 
-    # Auto-generate filenames if not provided
+    # Extract project name from source file
+    get_filename_component(PROJECT_NAME "${CVBASIC_PROJECT_SOURCE_FILE}" NAME_WE)
+
+    # Auto-generate ROM name if not provided
     if(NOT TGT_ROM)
-        # Default ROM naming: projectname_version_platform.ext
+        # Map target names to ROM name suffixes
+        set(ROM_SUFFIX "${TARGET_NAME}")
+        if(TARGET_NAME STREQUAL "coleco")
+            set(ROM_SUFFIX "cv")
+        elseif(TARGET_NAME STREQUAL "creativision")
+            set(ROM_SUFFIX "crv")
+        elseif(TARGET_NAME STREQUAL "sg1000")
+            set(ROM_SUFFIX "sc3000")
+        endif()
+
+        # Build ROM name with platform-specific extension
         if(PLATFORM STREQUAL "cv")
-            set(TGT_ROM "${TARGET_NAME}_${CVBASIC_PROJECT_VERSION}_${PLATFORM}.rom")
+            set(TGT_ROM "${PROJECT_NAME}_${CVBASIC_PROJECT_VERSION}_${ROM_SUFFIX}.rom")
         elseif(PLATFORM STREQUAL "ti994a")
-            set(TGT_ROM "${TARGET_NAME}_${CVBASIC_PROJECT_VERSION}_ti99_8.bin")
+            set(TGT_ROM "${PROJECT_NAME}_${CVBASIC_PROJECT_VERSION}_${ROM_SUFFIX}_8.bin")
         elseif(PLATFORM STREQUAL "msx")
-            set(TGT_ROM "${TARGET_NAME}_${CVBASIC_PROJECT_VERSION}_msx.rom")
+            set(TGT_ROM "${PROJECT_NAME}_${CVBASIC_PROJECT_VERSION}_${ROM_SUFFIX}.rom")
         elseif(PLATFORM STREQUAL "nabu")
-            set(TGT_ROM "${TARGET_NAME}_${CVBASIC_PROJECT_VERSION}.nabu")
+            # NABU is special - no suffix for regular nabu target
+            if(TARGET_NAME STREQUAL "nabu")
+                set(TGT_ROM "${PROJECT_NAME}_${CVBASIC_PROJECT_VERSION}.nabu")
+            else()
+                set(TGT_ROM "${PROJECT_NAME}_${CVBASIC_PROJECT_VERSION}_${ROM_SUFFIX}.nabu")
+            endif()
         elseif(PLATFORM STREQUAL "sg1000" OR PLATFORM STREQUAL "sc3000")
-            set(TGT_ROM "${TARGET_NAME}_${CVBASIC_PROJECT_VERSION}_${PLATFORM}.sg")
+            set(TGT_ROM "${PROJECT_NAME}_${CVBASIC_PROJECT_VERSION}_${ROM_SUFFIX}.sg")
         elseif(PLATFORM STREQUAL "creativision" OR PLATFORM STREQUAL "crv")
-            set(TGT_ROM "${TARGET_NAME}_${CVBASIC_PROJECT_VERSION}_crv.bin")
+            set(TGT_ROM "${PROJECT_NAME}_${CVBASIC_PROJECT_VERSION}_${ROM_SUFFIX}.bin")
         else()
-            set(TGT_ROM "${TARGET_NAME}_${CVBASIC_PROJECT_VERSION}_${PLATFORM}.bin")
+            set(TGT_ROM "${PROJECT_NAME}_${CVBASIC_PROJECT_VERSION}_${ROM_SUFFIX}.bin")
         endif()
     endif()
 
+    # Auto-generate ASM name if not provided
     if(NOT TGT_ASM)
-        # Default ASM naming
         get_filename_component(ROM_NAME "${TGT_ROM}" NAME_WE)
         if(PLATFORM_FLAG STREQUAL "--ti994a")
             set(TGT_ASM "${ROM_NAME}.a99")
@@ -321,8 +341,35 @@ function(cvbasic_add_target TARGET_NAME PLATFORM PLATFORM_FLAG)
         endif()
     endif()
 
+    # Auto-generate description if not provided
     if(NOT TGT_DESCRIPTION)
-        set(TGT_DESCRIPTION "${PLATFORM}")
+        # Platform-specific descriptions
+        if(PLATFORM STREQUAL "cv")
+            set(TGT_DESCRIPTION "ColecoVision")
+        elseif(PLATFORM STREQUAL "ti994a")
+            set(TGT_DESCRIPTION "TI-99/4A")
+        elseif(PLATFORM STREQUAL "msx")
+            # Try to infer MSX type from target name
+            if(TARGET_NAME MATCHES "konami")
+                set(TGT_DESCRIPTION "MSX Konami")
+            elseif(TARGET_NAME MATCHES "asc")
+                set(TGT_DESCRIPTION "MSX ASCII16")
+            else()
+                set(TGT_DESCRIPTION "MSX")
+            endif()
+        elseif(PLATFORM STREQUAL "nabu")
+            if(TARGET_NAME MATCHES "mame")
+                set(TGT_DESCRIPTION "NABU MAME")
+            else()
+                set(TGT_DESCRIPTION "NABU")
+            endif()
+        elseif(PLATFORM STREQUAL "sc3000" OR PLATFORM STREQUAL "sg1000")
+            set(TGT_DESCRIPTION "SG-1000/SC-3000")
+        elseif(PLATFORM STREQUAL "crv" OR PLATFORM STREQUAL "creativision")
+            set(TGT_DESCRIPTION "CreatiVision")
+        else()
+            set(TGT_DESCRIPTION "${PLATFORM}")
+        endif()
     endif()
 
     # CVBasic compilation
@@ -350,4 +397,9 @@ function(cvbasic_add_target TARGET_NAME PLATFORM PLATFORM_FLAG)
 
     # Add target
     add_custom_target(${TARGET_NAME} DEPENDS "${CVBASIC_PROJECT_ROMS_DIR}/${TGT_ROM}")
+
+    # Auto-add pletter compression dependency if configured
+    if(CVBASIC_PROJECT_PLETTER_TARGET)
+        add_dependencies(${TARGET_NAME} ${CVBASIC_PROJECT_PLETTER_TARGET})
+    endif()
 endfunction()
