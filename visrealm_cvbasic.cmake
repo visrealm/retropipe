@@ -73,6 +73,7 @@ function(setup_cvbasic_tools)
     set(CVBASIC_GIT_TAG "master" CACHE STRING "CVBasic git tag/branch/commit")
     set(GASM80_GIT_TAG "master" CACHE STRING "GASM80 git tag/branch/commit")
     set(XDT99_GIT_TAG "master" CACHE STRING "XDT99 git tag/branch/commit")
+    set(PLETTER_GIT_TAG "master" CACHE STRING "Pletter git tag/branch/commit")
 
     if(BUILD_TOOLS_FROM_SOURCE)
         # Use system default compilers for host builds
@@ -130,19 +131,50 @@ function(setup_cvbasic_tools)
                 ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR> ${CMAKE_BINARY_DIR}/external/xdt99
         )
 
+        # Build Pletter compression tool (simple C file - create CMakeLists.txt on-the-fly)
+        file(WRITE ${CMAKE_BINARY_DIR}/pletter_CMakeLists.txt
+"cmake_minimum_required(VERSION 3.5)
+project(pletter C)
+set(CMAKE_C_STANDARD 11)
+add_executable(pletter pletter.c)
+# MSVC compatibility - disable warnings and define MAX_PATH
+if(MSVC)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+    target_compile_definitions(pletter PRIVATE MAX_PATH=260)
+endif()
+install(TARGETS pletter RUNTIME DESTINATION bin)
+")
+        ExternalProject_Add(Pletter_external
+            GIT_REPOSITORY https://github.com/nanochess/Pletter.git
+            GIT_TAG ${PLETTER_GIT_TAG}
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ""
+            INSTALL_COMMAND
+                ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/external/pletter/bin &&
+                ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/pletter_CMakeLists.txt <SOURCE_DIR>/CMakeLists.txt &&
+                ${CMAKE_COMMAND} -E chdir <SOURCE_DIR>
+                    ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/external/pletter -B build &&
+                ${CMAKE_COMMAND} -E chdir <SOURCE_DIR>
+                    ${CMAKE_COMMAND} --build build --config Release &&
+                ${CMAKE_COMMAND} -E chdir <SOURCE_DIR>
+                    ${CMAKE_COMMAND} --install build --config Release
+        )
+
         # Set tool paths for external builds
         set(CVBASIC_EXE "${CMAKE_BINARY_DIR}/external/CVBasic/bin/cvbasic" PARENT_SCOPE)
         set(GASM80_EXE "${CMAKE_BINARY_DIR}/external/gasm80/bin/gasm80" PARENT_SCOPE)
         set(XAS99_SCRIPT "${CMAKE_BINARY_DIR}/external/xdt99/xas99.py" PARENT_SCOPE)
         set(LINKTICART_SCRIPT "${CMAKE_BINARY_DIR}/external/CVBasic/linkticart.py" PARENT_SCOPE)
+        set(PLETTER_EXE "${CMAKE_BINARY_DIR}/external/pletter/bin/pletter" PARENT_SCOPE)
 
         # Add dependencies to all CVBasic targets
-        set(TOOL_DEPENDENCIES CVBasic_external gasm80_external XDT99_external PARENT_SCOPE)
+        set(TOOL_DEPENDENCIES CVBasic_external gasm80_external XDT99_external Pletter_external PARENT_SCOPE)
 
         message(STATUS "CVBasic tools will be built from source")
         message(STATUS "CVBasic version/tag: ${CVBASIC_GIT_TAG}")
         message(STATUS "GASM80 version/tag: ${GASM80_GIT_TAG}")
         message(STATUS "XDT99 version/tag: ${XDT99_GIT_TAG}")
+        message(STATUS "Pletter version/tag: ${PLETTER_GIT_TAG}")
     else()
         # Find required tools (original behavior)
         find_program(CVBASIC_EXE cvbasic PATHS ${CMAKE_SOURCE_DIR}/tools/cvbasic ${CMAKE_SOURCE_DIR}/../CVBasic/build/Release REQUIRED)

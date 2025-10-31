@@ -40,10 +40,18 @@ function(compress_pletter_file PLETTER_BAS)
     get_filename_component(BASENAME ${PLETTER_BAS} NAME_WE)
     set(OUTPUT_FILE "${SOURCE_DIR}/${BASENAME}.pletter.bas")
 
+    # Set PLETTER_EXE environment variable for cvpletter.py
+    if(WIN32)
+        set(PLETTER_EXE_PATH "${PLETTER_EXE}.exe")
+    else()
+        set(PLETTER_EXE_PATH "${PLETTER_EXE}")
+    endif()
+
     add_custom_command(
         OUTPUT "${OUTPUT_FILE}"
-        COMMAND ${PYTHON} "${CMAKE_SOURCE_DIR}/tools/cvpletter.py" "${PLETTER_BAS}"
-        DEPENDS "${PLETTER_BAS}" "${CMAKE_SOURCE_DIR}/tools/cvpletter.py"
+        COMMAND ${CMAKE_COMMAND} -E env "PLETTER_EXE=${PLETTER_EXE_PATH}"
+                ${PYTHON} "${CMAKE_SOURCE_DIR}/tools/cvpletter.py" "${PLETTER_BAS}"
+        DEPENDS "${PLETTER_BAS}" "${CMAKE_SOURCE_DIR}/tools/cvpletter.py" ${TOOL_DEPENDENCIES}
         WORKING_DIRECTORY "${SOURCE_DIR}"
         COMMENT "Compressing pletter source: ${BASENAME}.bas"
         VERBATIM
@@ -98,6 +106,7 @@ message(STATUS "RetroPIPE CMake Configuration")
 message(STATUS "Version: ${FRIENDLYVER}")
 message(STATUS "CVBasic: ${CVBASIC_EXE}")
 message(STATUS "GASM80: ${GASM80_EXE}")
+message(STATUS "Pletter: ${PLETTER_EXE}")
 message(STATUS "linkticart.py: ${LINKTICART_SCRIPT}")
 if(XAS99_SCRIPT)
     message(STATUS "XAS99: ${XAS99_SCRIPT}")

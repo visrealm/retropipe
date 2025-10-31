@@ -11,13 +11,19 @@
 
 import re
 import sys
+import os
 import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-# Determine script directory and path to pletter.exe
-scriptDir = Path(__file__).parent.resolve()
-PLETTER_EXE = scriptDir / 'cvbasic' / 'pletter.exe'
+# Determine pletter executable path
+# Priority: environment variable > command-line arg > default bundled exe
+PLETTER_EXE = None
+if 'PLETTER_EXE' in os.environ:
+    PLETTER_EXE = Path(os.environ['PLETTER_EXE'])
+else:
+    scriptDir = Path(__file__).parent.resolve()
+    PLETTER_EXE = scriptDir / 'cvbasic' / 'pletter.exe'
 
 def extractLabelsAndData(basPath):
     """Parses a .bas file and extracts labeled DATA BYTE sequences."""
