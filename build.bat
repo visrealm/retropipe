@@ -11,7 +11,7 @@ mkdir build 2> NUL
 
 del /Q /S build\*
 
-set VERSION=v0-1-2
+set VERSION=v0-2-0
 set FRIENDLYVER=%VERSION:-=.%
 
 pushd src
@@ -189,8 +189,17 @@ echo Output: build\%BASENAME%.bin
     
 
 :: HBC56
-::cvbasic --hbc56 retropipe-nobank.bas asm\retropipetool_hbc56.asm %LIBPATH%
-::gasm80 asm\retropipetool_hbc56.asm -o bin\retropipetool_hbc56.rom
+
+echo.
+echo ---------------------------------------------------------------------
+echo   Compiling for HBC-56
+echo ---------------------------------------------------------------------
+
+set BASENAME=retropipe_%VERSION%_hbc56
+cvbasic --hbc56 retropipe.bas %ASMDIR%\%BASENAME%.asm %LIBPATH%
+if %errorlevel% neq 0 exit /b %errorlevel%
+gasm80 %ASMDIR%\%BASENAME%.asm -o %BUILDDIR%\%BASENAME%.bin
+echo Output: build\%BASENAME%.bin
 
 echo.
 

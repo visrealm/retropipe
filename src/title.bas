@@ -23,7 +23,7 @@ titleScreen: PROCEDURE
 
     ' set the background colors of the title text first two rows
     #addr = #VDP_COLOR_TAB1 + (136 * 8)
-    FOR I = 0 TO NAME_TABLE_HEIGHT - 1
+    FOR I = 0 TO 23
         DEFINE VRAM #addr, 16, titleLogoRow0Color
         #addr = #addr + 32
     NEXT I

@@ -648,9 +648,7 @@ pipeGame: PROCEDURE
   ' main game loop
   WHILE gameState <> GAME_STATE_NEXT_LEVEL
     WAIT
-    VDP_REG(7)=$f1
     ON gameState FAST GOSUB buildTick, flowTick, endTick
-    VDP_REG(7)=$f4
 
     GOSUB uiTick
     GOSUB logoTick
