@@ -137,10 +137,13 @@ function(setup_cvbasic_tools)
 project(pletter C)
 set(CMAKE_C_STANDARD 11)
 add_executable(pletter pletter.c)
-# MSVC compatibility - disable warnings and define MAX_PATH
+# Define MAX_PATH for all platforms (MSVC needs 260, Unix typically uses 4096 or PATH_MAX)
 if(MSVC)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
     target_compile_definitions(pletter PRIVATE MAX_PATH=260)
+else()
+    # Linux/macOS/Unix - use PATH_MAX equivalent
+    target_compile_definitions(pletter PRIVATE MAX_PATH=4096)
 endif()
 install(TARGETS pletter RUNTIME DESTINATION bin)
 ")
@@ -411,11 +414,15 @@ function(cvbasic_add_target TARGET_NAME PLATFORM PLATFORM_FLAG)
     endif()
     list(APPEND CVBASIC_COMMAND "${CVBASIC_PROJECT_SOURCE_FILE}" "${CVBASIC_PROJECT_ASM_DIR}/${TGT_ASM}" "${CVBASIC_PROJECT_LIB_DIR}")
 
+    # Create unique working directory per target to avoid cvbasic_temporary.asm conflicts
+    set(CVBASIC_WORK_DIR "${CMAKE_BINARY_DIR}/cvbasic_tmp/${TARGET_NAME}")
+
     add_custom_command(
         OUTPUT "${CVBASIC_PROJECT_ASM_DIR}/${TGT_ASM}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CVBASIC_WORK_DIR}"
         COMMAND ${CVBASIC_COMMAND}
         DEPENDS ${CVBASIC_PROJECT_DEPENDENCIES} ${CVBASIC_PROJECT_TOOL_DEPS}
-        WORKING_DIRECTORY "${CVBASIC_PROJECT_SOURCE_DIR}"
+        WORKING_DIRECTORY "${CVBASIC_WORK_DIR}"
         COMMENT "Compiling CVBasic for ${TGT_DESCRIPTION}"
         VERBATIM
     )
