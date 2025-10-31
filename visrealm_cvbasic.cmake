@@ -5,6 +5,10 @@ cmake_minimum_required(VERSION 3.12)
 include(ExternalProject)
 set(PYTHON python3)
 
+# Define a job pool with 1 slot to serialize CVBasic compilation
+# This prevents multiple CVBasic instances from conflicting on cvbasic_temporary.asm
+set_property(GLOBAL PROPERTY JOB_POOLS cvbasic_pool=1)
+
 # Find CVBasic tools with fallback paths
 function(find_cvbasic_tools)
     find_program(CVBASIC_EXECUTABLE cvbasic
@@ -414,15 +418,13 @@ function(cvbasic_add_target TARGET_NAME PLATFORM PLATFORM_FLAG)
     endif()
     list(APPEND CVBASIC_COMMAND "${CVBASIC_PROJECT_SOURCE_FILE}" "${CVBASIC_PROJECT_ASM_DIR}/${TGT_ASM}" "${CVBASIC_PROJECT_LIB_DIR}")
 
-    # Create unique working directory per target to avoid cvbasic_temporary.asm conflicts
-    set(CVBASIC_WORK_DIR "${CMAKE_BINARY_DIR}/cvbasic_tmp/${TARGET_NAME}")
-
+    # Use JOB_POOL to serialize CVBasic executions (avoids cvbasic_temporary.asm conflicts)
     add_custom_command(
         OUTPUT "${CVBASIC_PROJECT_ASM_DIR}/${TGT_ASM}"
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${CVBASIC_WORK_DIR}"
         COMMAND ${CVBASIC_COMMAND}
         DEPENDS ${CVBASIC_PROJECT_DEPENDENCIES} ${CVBASIC_PROJECT_TOOL_DEPS}
-        WORKING_DIRECTORY "${CVBASIC_WORK_DIR}"
+        WORKING_DIRECTORY "${CVBASIC_PROJECT_SOURCE_DIR}"
+        JOB_POOL cvbasic_pool
         COMMENT "Compiling CVBasic for ${TGT_DESCRIPTION}"
         VERBATIM
     )
