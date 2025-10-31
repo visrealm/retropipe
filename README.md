@@ -2,8 +2,6 @@
 
 A Pipe Dream clone for TMS9918A powered computers written in [CVBasic](https://github.com/visrealm/CVBasic)
 
-Not complete. This is a work in progress.
-
 ## Build Status
 
 | Platform | Windows | Linux | macOS |
@@ -38,8 +36,8 @@ You can play the latest released version for the TI-99/4A online courtesy of JS9
 * C compiler (GCC, Clang, MSVC, etc.)
 
 The build system automatically downloads and builds all required tools from source:
-* [CVBasic](https://github.com/nanochess/CVBasic) - Cross-compiler
-* [gasm80](https://github.com/visrealm/gasm80) - Z80/8080 assembler
+* [CVBasic](https://github.com/visrealm/CVBasic) - Cross-compiler
+* [gasm80](https://github.com/visrealm/gasm80) - Z80/6502 assembler
 * [XDT99](https://github.com/endlos99/xdt99) - TI-99/4A cross-assembler
 * [Pletter](https://github.com/nanochess/Pletter) - Graphics compression
 
