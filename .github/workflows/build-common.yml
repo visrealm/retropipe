@@ -1,0 +1,128 @@
+name: Common Build Steps
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name-suffix:
+        description: 'Suffix for artifact names'
+        required: true
+        type: string
+      run-windows:
+        description: 'Whether to run Windows job'
+        required: false
+        type: boolean
+        default: true
+      run-linux:
+        description: 'Whether to run Linux job'
+        required: false
+        type: boolean
+        default: true
+      run-macos:
+        description: 'Whether to run macOS job'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    if: ${{ inputs.run-windows }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pillow
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DBUILD_TOOLS_FROM_SOURCE=ON
+
+    - name: Build All Platforms
+      run: |
+        cd build
+        cmake --build . --target all_platforms --config Release
+
+    - name: Upload ROM Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: roms-${{ inputs.artifact-name-suffix }}
+        path: |
+          build/roms/*.rom
+          build/roms/*.bin
+          build/roms/*.nabu
+          build/roms/*.npz
+          build/roms/*.sg
+
+  linux:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-linux }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake python3 python3-pip git ninja-build
+        pip3 install pillow
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G Ninja -DBUILD_TOOLS_FROM_SOURCE=ON
+
+    - name: Build All Platforms
+      run: |
+        cd build
+        cmake --build . --target all_platforms
+
+    - name: Upload ROM Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: roms-${{ inputs.artifact-name-suffix }}
+        path: |
+          build/roms/*.rom
+          build/roms/*.bin
+          build/roms/*.nabu
+          build/roms/*.npz
+          build/roms/*.sg
+
+  macos:
+    runs-on: macos-latest
+    if: ${{ inputs.run-macos }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        brew install cmake ninja python3 git
+        pip3 install pillow --break-system-packages
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G Ninja -DBUILD_TOOLS_FROM_SOURCE=ON
+
+    - name: Build All Platforms
+      run: |
+        cd build
+        cmake --build . --target all_platforms
+
+    - name: Upload ROM Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: roms-${{ inputs.artifact-name-suffix }}
+        path: |
+          build/roms/*.rom
+          build/roms/*.bin
+          build/roms/*.nabu
+          build/roms/*.npz
+          build/roms/*.sg
